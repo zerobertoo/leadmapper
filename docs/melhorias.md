@@ -182,6 +182,21 @@ Pendente de validação **no navegador** (não dá para provar sem o Maps real):
 - D3: abrir o CSV no Excel pt-BR e conferir a coluna WhatsApp.
 - Revisitar a coleta de referência (nicho pet) e rodar o script de auditoria de e-mails e de nome × link.
 
+### Status da Onda 2 (2026-10-10)
+
+Implementado, com 82 testes passando, typecheck, lint e build verdes: R9, R10, R11, R12, R13, R14, D4, D5, D6, U2, U3, U4, U5, U6, U7, U8, S4, E1, E2.
+
+Diferenças em relação ao plano:
+
+- **R10**: detecta a verificação (URL `/sorry/` ou consentimento, `iframe` de recaptcha, formulário `/sorry/`) enquanto o content script ainda está na página do Maps. Se o Google redirecionar a aba inteira para `/sorry/`, o script é descarregado e o popup mostra "Abra uma busca no Google Maps".
+- **R14**: só o popup foi suavizado (releitura agrupada a cada 250 ms). O `patchLead` continua gravando a cada site, pois o custo só importa acima de ~5 mil leads (ver R15).
+- **D6**: a coluna "Tipo de e-mail" (genérico ou pessoal) vai no fim do CSV e há a opção de exportar só genéricos. A classificação é heurística: `clinicasorriso@gmail.com` conta como genérico e `petshop.pinheiros@gmail.com` como pessoal.
+- **E1**: workflow em Node 24 com `actions/checkout@v5` e `actions/setup-node@v5`. O push continua só quando você pedir.
+- **E2**: Biome só com o linter, sem formatador, para não reescrever o repositório inteiro.
+- **U7**: `<main>`, checkboxes de 18 px, foco visível em campos, avisos como `role="alert"`; o status não anuncia mais "Carregando…".
+
+Pendente de validação no navegador: dialog de "Limpar lista" (Esc, foco, "Exportar antes"), progresso com tempo estimado, badge com o popup fechado e leitura do popup com leitor de tela.
+
 ## 5. Recomendações das skills aplicadas
 
 ### `chrome-extensions`

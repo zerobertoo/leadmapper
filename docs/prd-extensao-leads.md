@@ -187,7 +187,7 @@ Cada lead é um objeto `Lead` salvo em `chrome.storage.local`, indexado por um `
 | coletado\_em | string | interno | Data e hora ISO 8601 |
 | status\_enriquecimento | enum | interno | `pendente`, `ok`, `sem_site`, `erro` |
 
-**Colunas do CSV (nesta ordem, cabeçalho em português):** Nome, Categoria, Telefone, Celular (sim ou não), WhatsApp, E-mail, Site, Endereço, Nota, Avaliações, Instagram, Facebook, Busca de origem, Link do Maps, Data da coleta.
+**Colunas do CSV (nesta ordem, cabeçalho em português):** Nome, Categoria, Telefone, Celular (sim ou não), WhatsApp, E-mail, Site, Endereço, Nota, Avaliações, Instagram, Facebook, Busca de origem, Link do Maps, Data da coleta. Colunas novas entram sempre no fim (hoje: Tipo de e-mail).
 
 Campos com várias entradas (e-mails, WhatsApp) saem em uma única célula, separados por vírgula e espaço.
 

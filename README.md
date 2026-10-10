@@ -19,7 +19,7 @@ Extensão de Chrome (Manifest V3) que transforma uma busca no Google Maps em uma
 
 ## Instalação
 
-Requisitos: Node.js 20+ e Chrome (ou Edge/Brave).
+Requisitos: Node.js 22+ (o CI usa o 24) e Chrome (ou Edge/Brave).
 
 ```bash
 npm install
@@ -48,6 +48,7 @@ Depois de qualquer alteração no código, rode `npm run build` e clique em reca
 | Buscar e-mail e WhatsApp nos sites | Visita o site de cada empresa. Desligue para uma coleta só do Maps. |
 | Exportar: toda a lista / só a busca atual | Exporta tudo o que está salvo ou só os leads da busca mais recente. |
 | Descartar leads sem nenhum contato | Na exportação, omite quem não tem telefone, e-mail nem WhatsApp. Não apaga nada. |
+| Só e-mails genéricos | Na exportação, tira os e-mails com cara de pessoa (`joao.silva@`) e mantém `contato@`, `vendas@` etc. O lead continua no arquivo. |
 
 ### Várias buscas na mesma lista
 
@@ -59,7 +60,14 @@ Se a aba ou o navegador fechou no meio, os leads já salvos continuam na lista. 
 
 ### O CSV
 
-UTF-8 com BOM, separador `;`, cabeçalho em português, pronto para o Excel e para o Google Sheets. Colunas: Nome, Categoria, Telefone, Celular, WhatsApp, E-mail, Site, Endereço, Nota, Avaliações, Instagram, Facebook, Busca de origem, Link do Maps, Data da coleta. Telefones e WhatsApp saem normalizados (`+55DDDNÚMERO` internamente; no CSV, `+55 (12) 99168-9416`). A coluna Site fica vazia quando o site do Maps é uma rede social ou um link de WhatsApp. E-mails de outro domínio (agência, modelo de formulário) são descartados; ficam os do domínio da empresa e de provedores pessoais (Gmail, Hotmail etc.).
+UTF-8 com BOM, separador `;`, cabeçalho em português, pronto para o Excel e para o Google Sheets. Colunas: Nome, Categoria, Telefone, Celular, WhatsApp, E-mail, Site, Endereço, Nota, Avaliações, Instagram, Facebook, Busca de origem, Link do Maps, Data da coleta e, no fim, Tipo de e-mail (genérico ou pessoal, por e-mail). Telefones e WhatsApp saem normalizados (`+55DDDNÚMERO` internamente; no CSV, `+55 (12) 99168-9416`). A coluna Site fica vazia quando o site do Maps é uma rede social ou um link de WhatsApp. E-mails de outro domínio (agência, modelo de formulário) são descartados; ficam os do domínio da empresa e de provedores pessoais (Gmail, Hotmail etc.).
+
+### Acompanhar e diagnosticar
+
+- **Ícone da extensão:** mostra a quantidade processada durante a coleta, `…` ao visitar sites, `||` pausado, `OK` ao concluir e `!` em erro. O popup pode ficar fechado.
+- **Aviso de campo vazio:** se categoria, endereço ou nota vierem vazios em 80% ou mais dos itens (a partir de 10), o popup avisa que o Maps pode ter mudado.
+- **Verificação do Google:** se o Maps pedir captcha ou consentimento, a coleta para com uma mensagem. Resolva na aba e inicie de novo.
+- **Diagnóstico:** o botão "Copiar diagnóstico" copia versão, estado, contadores e um log técnico local (últimos 200 eventos), sem dados dos leads.
 
 ## Limitações
 
@@ -93,6 +101,7 @@ Todos os dados ficam no navegador. Não há telemetria nem envio a servidores pr
 npm run build      # gera dist/ (service worker, content script e popup)
 npm run typecheck  # tsc --noEmit
 npm test           # testes unitários (Vitest)
+npm run lint       # Biome (regras de correção; sem formatador)
 ```
 
 Estrutura:
@@ -103,7 +112,8 @@ vite.config.ts            build por entrypoint (variável ENTRY)
 src/
   content/
     maps.ts               rola a lista, abre os cartões e extrai os campos
-    selectors.ts          todos os seletores do Maps
+    selectors.ts          todos os seletores do Maps (lista com fallbacks)
+    parse.ts              extração do painel e conferência da empresa (funções puras, testadas com fixtures)
   background/
     index.ts              orquestra a coleta, persiste e dispara o enriquecimento
     queue.ts              fila com limite de concorrência
@@ -117,6 +127,8 @@ src/
     csv.ts                geração do CSV e filtros de exportação
     domain.ts             domínio, redes sociais e identificador da empresa
     storage.ts            leitura e escrita em chrome.storage.local
+    diagnostic.ts         log de diagnóstico local (anel de 200 eventos)
+    eta.ts                tempo estimado restante
 tests/                    testes unitários das funções puras
 ```
 
