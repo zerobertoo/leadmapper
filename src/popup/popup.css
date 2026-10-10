@@ -129,6 +129,26 @@ button:focus-visible {
   gap: 8px;
 }
 
-.option {
+.options {
+  display: grid;
+  gap: 8px;
   margin-top: 12px;
+}
+
+.options input[type='number'],
+.options select {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  padding: 6px 8px;
+  box-sizing: border-box;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg);
+  font: inherit;
+}
+
+.options.locked {
+  opacity: 0.6;
 }

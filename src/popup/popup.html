@@ -16,6 +16,7 @@
       <div><dt>Com e-mail</dt><dd id="count-email">0</dd></div>
       <div><dt>Com WhatsApp</dt><dd id="count-whatsapp">0</dd></div>
       <div><dt>Sites visitados</dt><dd id="count-sites">0</dd></div>
+      <div><dt>Já coletados (pulados)</dt><dd id="count-skipped">0</dd></div>
       <div><dt>Duplicados removidos</dt><dd id="count-duplicates">0</dd></div>
       <div><dt>Erros</dt><dd id="count-failures">0</dd></div>
     </dl>
@@ -37,10 +38,24 @@
         <button id="clear" type="button">Limpar lista</button>
       </div>
     </section>
-    <label class="checkbox option">
-      <input id="enrich-sites" type="checkbox" checked />
-      Buscar e-mail e WhatsApp nos sites
-    </label>
+    <section id="options" class="options">
+      <label>
+        Máximo de empresas por coleta
+        <input id="limit" type="number" min="1" max="500" step="1" value="120" />
+      </label>
+      <label>
+        Velocidade
+        <select id="speed">
+          <option value="slow">Lenta</option>
+          <option value="normal" selected>Normal</option>
+          <option value="fast">Rápida</option>
+        </select>
+      </label>
+      <label class="checkbox">
+        <input id="enrich-sites" type="checkbox" checked />
+        Buscar e-mail e WhatsApp nos sites
+      </label>
+    </section>
     <div class="actions">
       <button id="start" type="button" disabled>Iniciar coleta</button>
       <button id="pause" type="button" hidden>Pausar</button>
