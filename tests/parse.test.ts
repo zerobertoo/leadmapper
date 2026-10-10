@@ -73,6 +73,16 @@ describe('extractLead', () => {
     });
   });
 
+  it('lê o resumo do horário e não o rótulo do ícone (estrutura do Maps real)', () => {
+    document.body.innerHTML = `<div role="main" aria-label="SAN PET">
+      <button data-item-id="address">Rua A, 1</button>
+      <div role="button" aria-expanded="false">Aberto 24 horas <span role="img" aria-label="Horário de funcionamento"></span></div>
+      <table><tr><td>sábado</td><td>Atendimento 24 horas</td></tr></table>
+    </div>`;
+    const lead = extractLead(findDetailsPanel()!, card, 'q');
+    expect(lead.horario).toBe('Aberto 24 horas');
+  });
+
   it('segue lendo a nota quando a classe ofuscada some', () => {
     document.body.innerHTML = fixture('maps-panel-full.html').replace(
       '<div class="F7nice"><span>4,8</span><span>(1.234)</span></div>',

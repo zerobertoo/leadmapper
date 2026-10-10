@@ -15,7 +15,7 @@ export const SELECTORS = {
   // mensagem de fim da lista (classe ofuscada, melhor esforço; há o fallback das 3 rolagens)
   endOfList: ['span.HlvSq'],
   // campo de busca, usado para descobrir o termo pesquisado
-  searchInput: ['#searchboxinput'],
+  searchInput: ['#searchboxinput', 'input[name="q"]'],
 
   // painel de detalhes: o que contém o endereço e tem aria-label com o nome
   detailsPanel: ['div[role="main"][aria-label]'],
@@ -24,8 +24,14 @@ export const SELECTORS = {
   phone: ['button[data-item-id^="phone"]'],
   website: ['a[data-item-id="authority"]'],
   category: ['button[jsaction*="category"]', '[jsaction*="category"]'],
-  // horário de funcionamento; validar no DOM real (o texto vem do aria-label ou do bloco)
-  hours: ['[data-item-id="oh"]', '[aria-label*="orário" i]', '[aria-label*="hours" i]'],
+  // horário de funcionamento: o botão expansível que resume o dia ("Aberto ⋅ Fecha às 18:00") e
+  // contém o ícone com aria-label "Horário de funcionamento" (validado no Maps real em 2026-10-10).
+  // Não usar o aria-label do ícone sozinho: o texto dele é só o rótulo, sem o horário.
+  hours: [
+    '[data-item-id="oh"]',
+    '[role="button"][aria-expanded]:has([aria-label*="orário" i])',
+    '[role="button"][aria-expanded]:has([aria-label*="hours" i])',
+  ],
   // bloco com nota e total de avaliações (ex.: "5,0 (14)"); a classe é ofuscada.
   // validar: o fallback usa o aria-label do ícone de estrelas (ex.: "5,0 estrelas 14 avaliações")
   ratingBlock: ['div.F7nice', '[role="img"][aria-label*="estrela" i]', '[role="img"][aria-label*="star" i]'],
