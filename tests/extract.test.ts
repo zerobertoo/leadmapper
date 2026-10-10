@@ -144,3 +144,45 @@ describe('redes extras', () => {
     ]);
   });
 });
+
+describe('revisão: perda de e-mail legítimo e custo do regex', () => {
+  it('"feito por" em texto comum e crédito em outro elemento não apagam o e-mail do contato', () => {
+    expect(extractEmails('<p>Tudo é feito por artesãos. <a href="mailto:contato@loja.com.br">escreva</a></p>')).toEqual([
+      'contato@loja.com.br',
+    ]);
+    expect(extractEmails('<footer>Desenvolvido por Agência X</footer><p>vendas@clinica.com.br</p>')).toEqual([
+      'vendas@clinica.com.br',
+    ]);
+  });
+
+  it('aceita TLDs de nichos comuns, como .pet e .vet', () => {
+    expect(extractEmails('ab@loja.pet ab@clinica.vet ab@studio.design')).toEqual([
+      'ab@loja.pet',
+      'ab@clinica.vet',
+      'ab@studio.design',
+    ]);
+  });
+
+  it('mantém provedores pessoais brasileiros com .com.br', () => {
+    expect(keepOwnEmails(['joao@hotmail.com.br', 'x@agencia.com.br'], 'clinica.com.br')).toEqual(['joao@hotmail.com.br']);
+  });
+
+  it('não corta em 5 antes de descartar os de terceiros', () => {
+    const noise = Array.from({ length: 6 }, (_, i) => `ab${i}@agencia.com.br`).join(' ');
+    const emails = extractEmails(`${noise} oi@loja.com.br`);
+    expect(keepOwnEmails(emails, 'loja.com.br')).toEqual(['oi@loja.com.br']);
+  });
+
+  it('sequências enormes sem @ não travam a análise', () => {
+    const started = Date.now();
+    extractEmails('a'.repeat(300_000));
+    expect(Date.now() - started).toBeLessThan(1000);
+  });
+
+  it('marca: prefixo curto e sufixos de hospedagem não confundem com o site', () => {
+    expect(classifyEmail('x@casadosaber.com.br', 'casa.com.br')).toBe('terceiro');
+    expect(classifyEmail('x@outra.wixsite.com', 'minha.wixsite.com')).toBe('terceiro');
+    expect(classifyEmail('x@outra.odo.br', 'clinicax.odo.br')).toBe('terceiro');
+    expect(classifyEmail('oi@clinicax.odo.br', 'www.clinicax.odo.br')).toBe('proprio');
+  });
+});

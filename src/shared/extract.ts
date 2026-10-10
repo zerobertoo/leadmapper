@@ -1,6 +1,7 @@
 import { parseBrazilianPhone } from './phone';
 
-const EMAIL_PATTERN = /[a-z0-9._%+-]+@[a-z0-9-]+(?:\.[a-z0-9-]+)*\.[a-z]{2,24}/gi;
+// limites do RFC (64 na parte local, 63 por rótulo) mantêm o custo linear em páginas com sequências enormes
+const EMAIL_PATTERN = /[a-z0-9._%+-]{1,64}@[a-z0-9-]{1,63}(?:\.[a-z0-9-]{1,63})*\.[a-z]{2,24}/gi;
 const MAILTO_PATTERN = /mailto:([^"'?#\s<>]+)/gi;
 const FULL_EMAIL_PATTERN = new RegExp(`^${EMAIL_PATTERN.source}$`, 'i');
 
@@ -30,6 +31,9 @@ const GENERIC_TLDS = new Set([
   'com', 'net', 'org', 'edu', 'gov', 'mil', 'int', 'info', 'biz', 'app', 'dev', 'online', 'site',
   'store', 'shop', 'tech', 'xyz', 'club', 'pro', 'blog', 'cloud', 'digital', 'email', 'agency',
   'link', 'live', 'life', 'world', 'today', 'center', 'clinic', 'health', 'dental', 'med', 'adv',
+  'pet', 'vet', 'law', 'fit', 'studio', 'design', 'saude', 'bio', 'care', 'legal', 'academy',
+  'energy', 'solutions', 'services', 'company', 'group', 'team', 'media', 'expert', 'fitness',
+  'coffee', 'pizza', 'beauty', 'salon', 'photo', 'photography', 'house', 'solar', 'rocks',
 ]);
 
 function isUsefulEmail(email: string): boolean {
@@ -52,9 +56,11 @@ function safeDecode(text: string): string {
 }
 
 // crédito de quem fez o site ("desenvolvido por ..."): o e-mail ao lado é da agência
+// "feito por" e "criado por" sozinhos aparecem em texto comum ("feito por artesãos"): exigem "site", "loja" etc. antes
 const CREDIT_PATTERN =
-  /(?:desenvolvid[oa]s?|criad[oa]s?|feit[oa]s?|hospedad[oa]s?)\s+(?:por|pel[oa])\b|(?:created|developed|designed|powered|made|hosted)\s+by\b|(?:design|site|web)\s+by\b/gi;
-const CREDIT_REGEX = new RegExp(`(?:${CREDIT_PATTERN.source})[\\s\\S]{0,300}`, 'gi');
+  /(?:site|p[áa]gina|loja|portal)\s+(?:desenvolvid|criad|feit|hospedad)[oa]s?\s+(?:por|pel[oa])\b|desenvolvid[oa]s?\s+(?:por|pel[oa])\b|(?:created|developed|designed|powered|hosted)\s+by\b|(?:design|site|web)\s+by\b/gi;
+// o crédito vale até o próximo fecho de tag: o e-mail do contato costuma vir em outro elemento
+const CREDIT_REGEX = new RegExp(`(?:${CREDIT_PATTERN.source})(?:(?!</)[\\s\\S]){0,300}`, 'gi');
 
 /** E-mails de links `mailto:` e do texto da página, sem falsos positivos (RF2.2). */
 export function extractEmails(rawHtml: string): string[] {
@@ -71,7 +77,8 @@ export function extractEmails(rawHtml: string): string[] {
     const email = candidate.trim().toLowerCase();
     if (isUsefulEmail(email)) unique.add(email);
   }
-  return [...unique].slice(0, MAX_EMAILS);
+  // o corte em MAX_EMAILS é de quem chama, depois de descartar os de terceiros
+  return [...unique];
 }
 
 const WHATSAPP_PATTERNS = [
@@ -167,14 +174,30 @@ export function findContactPages(html: string, baseUrl: string): string[] {
 const PERSONAL_PROVIDERS = new Set([
   'gmail.com', 'hotmail.com', 'outlook.com', 'live.com', 'yahoo.com', 'yahoo.com.br',
   'uol.com.br', 'bol.com.br', 'terra.com.br', 'icloud.com', 'msn.com', 'ig.com.br',
+  'hotmail.com.br', 'outlook.com.br', 'live.com.br', 'globo.com', 'globomail.com', 'r7.com',
+  'zipmail.com.br', 'pop.com.br',
 ]);
 
-const SECOND_LEVEL = new Set(['com', 'net', 'org', 'gov', 'edu', 'ind', 'eco', 'adv', 'med']);
+const SECOND_LEVEL = new Set([
+  'com', 'net', 'org', 'gov', 'edu', 'ind', 'eco', 'adv', 'med', 'odo', 'vet', 'arq', 'eng', 'far',
+  'psc', 'mus', 'tur', 'adm', 'jor', 'fot', 'blog', 'app', 'srv', 'nom', 'fst', 'cnt',
+]);
+
+// hospedagens em que o primeiro rótulo antes do sufixo é o dono do site, não a plataforma
+const SHARED_HOSTS = [
+  'wixsite.com', 'blogspot.com', 'wordpress.com', 'myshopify.com', 'weebly.com', 'webflow.io',
+  'github.io', 'netlify.app', 'vercel.app', 'lojaintegrada.com.br',
+];
 
 // nome da marca no domínio: "zee-dog.com" e "zeedog.com.br" viram "zeedog"
 function brandOf(domain: string): string {
   const labels = domain.split('.');
-  const suffixLength = labels.length >= 3 && SECOND_LEVEL.has(labels[labels.length - 2]) ? 2 : 1;
+  const shared = SHARED_HOSTS.find((host) => domain.endsWith(`.${host}`));
+  const suffixLength = shared
+    ? shared.split('.').length
+    : labels.length >= 3 && SECOND_LEVEL.has(labels[labels.length - 2])
+      ? 2
+      : 1;
   const brand = labels[Math.max(0, labels.length - suffixLength - 1)] ?? domain;
   return brand.replace(/-/g, '');
 }
@@ -188,7 +211,8 @@ export function classifyEmail(email: string, siteDomain: string): EmailKind {
   const siteBrand = brandOf(siteDomain);
   const sameBrand =
     emailBrand === siteBrand ||
-    (Math.min(emailBrand.length, siteBrand.length) >= 4 &&
+    // prefixo curto ("casa" × "casadosaber") é coincidência; a partir de 6 letras é a mesma marca
+    (Math.min(emailBrand.length, siteBrand.length) >= 6 &&
       (emailBrand.startsWith(siteBrand) || siteBrand.startsWith(emailBrand)));
   if (sameBrand) return 'proprio';
   return PERSONAL_PROVIDERS.has(domain) ? 'pessoal' : 'terceiro';
