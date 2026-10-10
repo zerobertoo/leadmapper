@@ -27,6 +27,23 @@ export function isNonWebsite(url: string): boolean {
   return isSocialDomain(domain) || isWhatsappDomain(domain);
 }
 
+/** localhost, nomes de rede local e IPs privados: a extensão não deve visitá-los a pedido de uma ficha do Maps. */
+export function isPrivateHost(host: string): boolean {
+  const name = host.replace(/^\[|\]$/g, '').toLowerCase();
+  if (name === 'localhost' || name.endsWith('.localhost') || name.endsWith('.local') || name.endsWith('.internal')) {
+    return true;
+  }
+  if (!name.includes('.') && !name.includes(':')) return true; // nome sem ponto: só existe na rede local
+  const octets = name.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/)?.slice(1).map(Number);
+  if (octets) {
+    const [a, b] = octets;
+    return (
+      a === 0 || a === 10 || a === 127 || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168)
+    );
+  }
+  return name.includes(':') && (name === '::1' || name === '::' || /^f[cd]/.test(name) || /^fe80/.test(name));
+}
+
 /** Par de ids `0x...:0x...` do Maps na URL, ou null se não houver. */
 export function placeId(mapsUrl: string): string | null {
   const id = mapsUrl.match(/!1s(0x[0-9a-f]+:0x[0-9a-f]+)/i);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { extractDomain, isNonWebsite, isSocialDomain, placeId, placeKey } from '../src/shared/domain';
+import { extractDomain, isNonWebsite, isPrivateHost, isSocialDomain, placeId, placeKey } from '../src/shared/domain';
 
 describe('placeKey', () => {
   it('usa o par de ids da empresa e ignora parâmetros de rastreamento', () => {
@@ -37,5 +37,19 @@ describe('placeId e isNonWebsite', () => {
     expect(isNonWebsite('https://wa.me/5512999999999')).toBe(true);
     expect(isNonWebsite('https://api.whatsapp.com/send?phone=5512999999999')).toBe(true);
     expect(isNonWebsite('https://clinica.com.br')).toBe(false);
+  });
+});
+
+describe('isPrivateHost', () => {
+  it('reconhece localhost, rede local e IPs privados', () => {
+    for (const host of ['localhost', '127.0.0.1', '10.0.0.5', '192.168.0.1', '172.16.3.4', '169.254.1.1', 'impressora.local', 'intranet', '[::1]']) {
+      expect(isPrivateHost(host), host).toBe(true);
+    }
+  });
+
+  it('não confunde sites públicos', () => {
+    for (const host of ['clinica.com.br', '8.8.8.8', '172.32.0.1', '192.169.0.1']) {
+      expect(isPrivateHost(host), host).toBe(false);
+    }
   });
 });
