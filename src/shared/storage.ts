@@ -27,6 +27,32 @@ export async function upsertLeads(incoming: Lead[]): Promise<void> {
   });
 }
 
+export type EnrichmentPatch = Partial<
+  Pick<Lead, 'emails' | 'whatsapp' | 'redes_sociais' | 'status_enriquecimento'>
+>;
+
+/**
+ * Atualiza um lead com os dados achados no site (listas são unidas às
+ * existentes). Ignora ids que não existem mais, por exemplo após limpar a lista
+ * ou mesclar duplicados. Quem chama deve serializar, como em upsertLeads.
+ */
+export async function patchLead(id: string, patch: EnrichmentPatch): Promise<void> {
+  const leads = await readLeads();
+  const index = leads.findIndex((lead) => lead.id === id);
+  if (index === -1) return;
+
+  const lead = leads[index];
+  const union = (a: string[], b: string[] = []) => [...new Set([...a, ...b])];
+  leads[index] = {
+    ...lead,
+    emails: union(lead.emails, patch.emails),
+    whatsapp: union(lead.whatsapp, patch.whatsapp),
+    redes_sociais: union(lead.redes_sociais, patch.redes_sociais),
+    status_enriquecimento: patch.status_enriquecimento ?? lead.status_enriquecimento,
+  };
+  await chrome.storage.local.set({ [STORAGE_KEYS.leads]: leads });
+}
+
 export async function readDuplicates(): Promise<number> {
   const stored = await chrome.storage.local.get(STORAGE_KEYS.duplicates);
   return (stored[STORAGE_KEYS.duplicates] as number | undefined) ?? 0;

@@ -1,5 +1,14 @@
 import { deriveFields } from '../shared/dedupe';
-import { readState, upsertLeads, writeProgress, writeState } from '../shared/storage';
+import { extractDomain, isSocialDomain } from '../shared/domain';
+import {
+  patchLead,
+  readLeads,
+  readState,
+  upsertLeads,
+  writeProgress,
+  writeState,
+  type EnrichmentPatch,
+} from '../shared/storage';
 import {
   DEFAULT_SETTINGS,
   EMPTY_PROGRESS,
@@ -12,14 +21,16 @@ import {
   type PopupMessage,
   type StatusReply,
 } from '../shared/types';
+import { enrichSite } from './enrich';
+import { runWithConcurrency } from './queue';
 
 const MAPS_URL_PATTERN = /^https:\/\/www\.google\.com(\.br)?\/maps/;
 const BATCH_SIZE = 10;
+const ENRICHMENT_CONCURRENCY = 3;
+const PAUSE_POLL_MS = 300;
 
 const STATE_AFTER_COMMAND = {
-  START: 'running',
   PAUSE: 'paused',
-  RESUME: 'running',
   CANCEL: 'cancelled',
 } as const satisfies Record<string, CollectionState>;
 
@@ -31,8 +42,91 @@ let writeChain: Promise<void> = Promise.resolve();
 function flushBatch(): Promise<void> {
   const leads = pendingBatch;
   pendingBatch = [];
-  if (leads.length > 0) writeChain = writeChain.then(() => upsertLeads(leads));
+  if (leads.length > 0) {
+    writeChain = writeChain.then(() => upsertLeads(leads));
+    // leads novos podem ter site para visitar
+    void writeChain.then(processPending);
+  }
   return writeChain;
+}
+
+// ---- enriquecimento pelos sites (fila reconstruída a partir de status_enriquecimento) ----
+
+let enrichmentRunning = false;
+let rerunRequested = false;
+
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+async function isEnrichmentEnabled(): Promise<boolean> {
+  const stored = await chrome.storage.local.get(STORAGE_KEYS.enrichSites);
+  return (stored[STORAGE_KEYS.enrichSites] as boolean | undefined) ?? DEFAULT_SETTINGS.enrichSites;
+}
+
+// bloqueia enquanto pausado; devolve false se a coleta não está mais ativa
+async function waitUntilActive(): Promise<boolean> {
+  for (;;) {
+    const state = await readState();
+    if (state === 'paused') await sleep(PAUSE_POLL_MS);
+    else return state === 'running' || state === 'enriching';
+  }
+}
+
+async function enrichLead(lead: Lead): Promise<void> {
+  if (!(await waitUntilActive())) return;
+
+  const domain = extractDomain(lead.site);
+  let patch: EnrichmentPatch;
+  if (!domain || isSocialDomain(domain)) {
+    // perfil de rede social não é site: a URL já foi guardada em redes_sociais (RF2.5)
+    patch = { status_enriquecimento: 'sem_site' };
+  } else {
+    const result = await enrichSite(lead.site);
+    patch = {
+      emails: result.emails,
+      whatsapp: result.whatsapp,
+      redes_sociais: result.redes_sociais,
+      status_enriquecimento: result.status,
+    };
+  }
+  writeChain = writeChain.then(() => patchLead(lead.id, patch));
+  await writeChain;
+}
+
+async function drainQueue(): Promise<void> {
+  const attempted = new Set<string>();
+  for (;;) {
+    if (!(await isEnrichmentEnabled()) || !(await waitUntilActive())) return;
+    const pending = (await readLeads()).filter(
+      (lead) => lead.status_enriquecimento === 'pendente' && lead.site && !attempted.has(lead.id),
+    );
+    if (pending.length === 0) return;
+    pending.forEach((lead) => attempted.add(lead.id));
+    await runWithConcurrency(pending, ENRICHMENT_CONCURRENCY, enrichLead);
+  }
+}
+
+/** Processa os leads pendentes, com no máximo 3 sites em paralelo (RF2.4). */
+async function processPending(): Promise<void> {
+  if (enrichmentRunning) {
+    rerunRequested = true;
+    return;
+  }
+  enrichmentRunning = true;
+  try {
+    do {
+      rerunRequested = false;
+      await drainQueue();
+    } while (rerunRequested);
+  } finally {
+    enrichmentRunning = false;
+  }
+  // fila vazia depois do fim da coleta: a coleta termina de fato aqui
+  if ((await readState()) === 'enriching' && !enrichmentRunning) await writeState('done');
+}
+
+async function hasPendingSites(): Promise<boolean> {
+  const leads = await readLeads();
+  return leads.some((lead) => lead.status_enriquecimento === 'pendente' && lead.site);
 }
 
 async function getActiveMapsTab(): Promise<chrome.tabs.Tab | null> {
@@ -66,15 +160,28 @@ async function handlePopupMessage(message: PopupMessage): Promise<StatusReply> {
         state = 'idle';
         await writeState(state);
       }
+      // service worker reiniciado no meio do enriquecimento: retoma a fila
+      if (state === 'enriching') void processPending();
       return { kind: 'ready', state, hasResults: reply.hasResults };
     }
 
     if (message.type === 'START') {
       await writeProgress(EMPTY_PROGRESS);
       await chrome.storage.local.set({ [STORAGE_KEYS.duplicates]: 0 });
-      const reply = await sendToContent(tab.id!, { type: 'START', settings: DEFAULT_SETTINGS });
+      const settings = { ...DEFAULT_SETTINGS, ...message.settings };
+      await chrome.storage.local.set({ [STORAGE_KEYS.enrichSites]: settings.enrichSites });
+      const reply = await sendToContent(tab.id!, { type: 'START', settings });
       await writeState('running');
       return { kind: 'ready', state: 'running', hasResults: reply.hasResults };
+    }
+
+    if (message.type === 'RESUME') {
+      const reply = await sendToContent(tab.id!, { type: 'RESUME' });
+      // se a coleta do Maps já terminou, o que falta é visitar os sites
+      const state = reply.state === 'running' ? 'running' : 'enriching';
+      await writeState(state);
+      void processPending();
+      return { kind: 'ready', state, hasResults: reply.hasResults };
     }
 
     // grava o estado antes: o DONE do content script não pode sobrescrever "cancelled"
@@ -100,8 +207,15 @@ async function handleContentEvent(event: ContentEvent): Promise<void> {
     case 'DONE':
       await flushBatch();
       await writeProgress(event.progress);
-      // se o usuário cancelou, mantém "cancelled"
-      if ((await readState()) !== 'cancelled') await writeState('done');
+      // se o usuário cancelou ou pausou, o estado é mantido
+      if ((await readState()) === 'running') {
+        if ((await isEnrichmentEnabled()) && (await hasPendingSites())) {
+          await writeState('enriching');
+          void processPending();
+        } else {
+          await writeState('done');
+        }
+      }
       break;
   }
 }
@@ -116,3 +230,8 @@ chrome.runtime.onMessage.addListener(
     return true; // resposta assíncrona
   },
 );
+
+// ao acordar, continua o enriquecimento que ficou pela metade
+void readState().then((state) => {
+  if (state === 'enriching') void processPending();
+});

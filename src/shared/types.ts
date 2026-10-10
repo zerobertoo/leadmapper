@@ -2,7 +2,14 @@
 export type CollectionCommand = 'START' | 'PAUSE' | 'RESUME' | 'CANCEL';
 
 /** Estado da coleta, persistido em chrome.storage.local. */
-export type CollectionState = 'idle' | 'running' | 'paused' | 'done' | 'cancelled';
+export type CollectionState =
+  | 'idle'
+  | 'running'
+  // coleta do Maps terminou; falta visitar os sites das empresas
+  | 'enriching'
+  | 'paused'
+  | 'done'
+  | 'cancelled';
 
 export type SpeedMode = 'slow' | 'normal' | 'fast';
 
@@ -11,9 +18,11 @@ export interface CollectionSettings {
   limit: number;
   /** Ajusta as pausas entre ações. */
   speed: SpeedMode;
+  /** Visita o site de cada empresa para achar e-mail e WhatsApp. */
+  enrichSites: boolean;
 }
 
-export const DEFAULT_SETTINGS: CollectionSettings = { limit: 120, speed: 'normal' };
+export const DEFAULT_SETTINGS: CollectionSettings = { limit: 120, speed: 'normal', enrichSites: true };
 
 export type EnrichmentStatus = 'pendente' | 'ok' | 'sem_site' | 'erro';
 
@@ -52,7 +61,10 @@ export interface Progress {
 export const EMPTY_PROGRESS: Progress = { found: 0, processed: 0, withPhone: 0, failures: 0 };
 
 /** Mensagens aceitas pelo service worker vindas do popup. */
-export type PopupMessage = { type: 'GET_STATUS' } | { type: CollectionCommand };
+export type PopupMessage =
+  | { type: 'GET_STATUS' }
+  | { type: 'START'; settings?: Partial<CollectionSettings> }
+  | { type: Exclude<CollectionCommand, 'START'> };
 
 /** Eventos enviados pelo content script ao service worker. */
 export type ContentEvent =
@@ -87,4 +99,6 @@ export const STORAGE_KEYS = {
   leads: 'leads',
   // duplicados mesclados desde o início da coleta atual
   duplicates: 'duplicates',
+  // se os sites das empresas devem ser visitados na coleta atual
+  enrichSites: 'enrichSites',
 } as const;
