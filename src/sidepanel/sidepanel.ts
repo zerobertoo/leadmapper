@@ -1,4 +1,4 @@
-import { exportFileName, leadsToCsv } from '../shared/csv';
+import { exportFileName, leadsToCsv, selectLeadsForExport } from '../shared/csv';
 import { leadsToJson, leadsToVcard } from '../shared/export';
 import {
   EMPTY_FILTER,
@@ -13,11 +13,14 @@ import { parseBrazilianPhone } from '../shared/phone';
 import { readLeads } from '../shared/storage';
 import {
   CONTACT_STATUS_LABELS,
+  DEFAULT_OPTIONS,
+  OPTIONS_STORAGE_KEY,
   STORAGE_KEYS,
   type ContactStatus,
   type Lead,
   type LeadEdit,
   type PopupMessage,
+  type PopupOptions,
 } from '../shared/types';
 
 const PAGE_SIZE = 50;
@@ -60,8 +63,19 @@ const filter = (): ListFilter => ({
 
 const filteredLeads = () => sortLeads(filterLeads(allLeads, filter()), sortSelect.value as SortKey);
 
-function send(message: PopupMessage): Promise<unknown> {
-  return chrome.runtime.sendMessage(message);
+async function send(message: PopupMessage): Promise<void> {
+  try {
+    await chrome.runtime.sendMessage(message);
+  } catch (error) {
+    summary.textContent = `Não consegui salvar a alteração (${error instanceof Error ? error.message : String(error)}). Tente de novo.`;
+  }
+}
+
+// selecionados que o filtro atual mostra: ações em lote nunca atingem linhas que o usuário não vê
+function selectedVisibleIds(): string[] {
+  return filteredLeads()
+    .filter((lead) => selected.has(lead.id))
+    .map((lead) => lead.id);
 }
 
 function option(value: string, label: string): HTMLOptionElement {
@@ -172,7 +186,7 @@ function buildRow(lead: Lead): HTMLTableRowElement {
 
 function updateBulk(): void {
   const visibleIds = filteredLeads().map((lead) => lead.id);
-  const chosen = visibleIds.filter((id) => selected.has(id)).length;
+  const chosen = selectedVisibleIds().length;
   selectAll.checked = visibleIds.length > 0 && chosen === visibleIds.length;
   selectAll.indeterminate = chosen > 0 && chosen < visibleIds.length;
   selectAllLabel.textContent =
@@ -208,19 +222,32 @@ function scheduleRender(): void {
   }, RENDER_THROTTLE_MS);
 }
 
-async function reload(): Promise<void> {
-  allLeads = await readLeads();
-  scheduleRender();
+// leituras terminam fora de ordem: só a mais recente vale
+let reloadSequence = 0;
+
+async function reload(): Promise<boolean> {
+  const sequence = ++reloadSequence;
+  const leads = await readLeads();
+  if (sequence !== reloadSequence) return false;
+  allLeads = leads;
+  return true;
 }
 
 async function edit(ids: string[], change: LeadEdit): Promise<void> {
   await send({ type: 'UPDATE_LEADS', ids, edit: change });
 }
 
-// quando há seleção, exporta só ela; senão, tudo que o filtro mostra
-function leadsToExport(): Lead[] {
+// quando há seleção, exporta só ela; senão, tudo que o filtro mostra. As opções de LGPD do popup valem aqui também
+async function leadsToExport(): Promise<Lead[]> {
   const leads = filteredLeads();
-  return selected.size > 0 ? leads.filter((lead) => selected.has(lead.id)) : leads;
+  const chosen = selectedVisibleIds();
+  const stored = await chrome.storage.local.get(OPTIONS_STORAGE_KEY);
+  const options = { ...DEFAULT_OPTIONS, ...(stored[OPTIONS_STORAGE_KEY] as Partial<PopupOptions> | undefined) };
+  return selectLeadsForExport(chosen.length > 0 ? leads.filter((lead) => chosen.includes(lead.id)) : leads, {
+    scope: 'all',
+    discardWithoutContact: options.discardWithoutContact,
+    genericEmailsOnly: options.genericEmailsOnly,
+  });
 }
 
 function download(name: string, content: string, mime: string): void {
@@ -230,8 +257,12 @@ function download(name: string, content: string, mime: string): void {
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
-function exportLeads(): void {
-  const leads = leadsToExport();
+async function exportLeads(): Promise<void> {
+  const leads = await leadsToExport();
+  if (leads.length === 0) {
+    summary.textContent = 'Nenhum lead para exportar com essas opções.';
+    return;
+  }
   const now = new Date();
   switch (exportFormat.value) {
     case 'json':
@@ -271,13 +302,13 @@ selectAll.addEventListener('change', () => {
 });
 applyStatus.addEventListener('click', () => {
   if (!bulkStatus.value) return;
-  void edit([...selected], { status_contato: bulkStatus.value as ContactStatus });
+  void edit(selectedVisibleIds(), { status_contato: bulkStatus.value as ContactStatus });
 });
-exportButton.addEventListener('click', exportLeads);
+exportButton.addEventListener('click', () => void exportLeads());
 removeButton.addEventListener('click', async () => {
-  const ids = [...selected];
+  const ids = selectedVisibleIds();
   if (ids.length === 0 || !(await askBeforeRemoving(ids.length))) return;
-  selected.clear();
+  for (const id of ids) selected.delete(id);
   await send({ type: 'DELETE_LEADS', ids });
 });
 moreButton.addEventListener('click', () => {
@@ -297,9 +328,9 @@ if (!('closedBy' in HTMLDialogElement.prototype)) {
 }
 
 chrome.storage.onChanged.addListener((changes) => {
-  if (STORAGE_KEYS.leads in changes) void reload();
+  if (STORAGE_KEYS.leads in changes) void reload().then((fresh) => fresh && scheduleRender());
 });
 
 fillStatusOptions(statusSelect, 'Todos');
 fillStatusOptions(bulkStatus);
-void reload().then(render);
+void reload().then((fresh) => fresh && render());
