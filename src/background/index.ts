@@ -1,13 +1,18 @@
+import { appendLeads, readState, writeProgress, writeState } from '../shared/storage';
 import {
-  STATE_STORAGE_KEY,
+  DEFAULT_SETTINGS,
+  EMPTY_PROGRESS,
   type CollectionState,
+  type ContentEvent,
   type ContentMessage,
   type ContentReply,
+  type Lead,
   type PopupMessage,
   type StatusReply,
 } from '../shared/types';
 
 const MAPS_URL_PATTERN = /^https:\/\/www\.google\.com(\.br)?\/maps/;
+const BATCH_SIZE = 10;
 
 const STATE_AFTER_COMMAND = {
   START: 'running',
@@ -16,14 +21,21 @@ const STATE_AFTER_COMMAND = {
   CANCEL: 'cancelled',
 } as const satisfies Record<string, CollectionState>;
 
+// leads aguardando gravação; se o service worker morrer, perde no máximo BATCH_SIZE - 1
+let pendingBatch: Lead[] = [];
+// serializa as gravações, pois appendLeads faz leitura + escrita
+let writeChain: Promise<void> = Promise.resolve();
+
+function flushBatch(): Promise<void> {
+  const leads = pendingBatch;
+  pendingBatch = [];
+  if (leads.length > 0) writeChain = writeChain.then(() => appendLeads(leads));
+  return writeChain;
+}
+
 async function getActiveMapsTab(): Promise<chrome.tabs.Tab | null> {
   const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
   return tab?.id !== undefined && MAPS_URL_PATTERN.test(tab.url ?? '') ? tab : null;
-}
-
-async function readState(): Promise<CollectionState> {
-  const stored = await chrome.storage.local.get(STATE_STORAGE_KEY);
-  return (stored[STATE_STORAGE_KEY] as CollectionState | undefined) ?? 'idle';
 }
 
 /**
@@ -46,19 +58,57 @@ async function handlePopupMessage(message: PopupMessage): Promise<StatusReply> {
   try {
     if (message.type === 'GET_STATUS') {
       const reply = await sendToContent(tab.id!, { type: 'PING' });
-      return { kind: 'ready', state: await readState(), hasResults: reply.hasResults };
+      let state = await readState();
+      // aba recarregada durante a coleta: o content script voltou ao zero
+      if ((state === 'running' || state === 'paused') && reply.state === 'idle') {
+        state = 'idle';
+        await writeState(state);
+      }
+      return { kind: 'ready', state, hasResults: reply.hasResults };
     }
-    const reply = await sendToContent(tab.id!, { type: message.type });
+
+    if (message.type === 'START') {
+      await writeProgress(EMPTY_PROGRESS);
+      const reply = await sendToContent(tab.id!, { type: 'START', settings: DEFAULT_SETTINGS });
+      await writeState('running');
+      return { kind: 'ready', state: 'running', hasResults: reply.hasResults };
+    }
+
+    // grava o estado antes: o DONE do content script não pode sobrescrever "cancelled"
     const state = STATE_AFTER_COMMAND[message.type];
-    await chrome.storage.local.set({ [STATE_STORAGE_KEY]: state });
+    await writeState(state);
+    const reply = await sendToContent(tab.id!, { type: message.type });
+    if (state === 'cancelled' || state === 'paused') await flushBatch();
     return { kind: 'ready', state, hasResults: reply.hasResults };
   } catch (error) {
     return { kind: 'error', message: error instanceof Error ? error.message : String(error) };
   }
 }
 
+async function handleContentEvent(event: ContentEvent): Promise<void> {
+  switch (event.type) {
+    case 'LEAD_FOUND':
+      pendingBatch.push(event.lead);
+      if (pendingBatch.length >= BATCH_SIZE) await flushBatch();
+      break;
+    case 'PROGRESS':
+      await writeProgress(event.progress);
+      break;
+    case 'DONE':
+      await flushBatch();
+      await writeProgress(event.progress);
+      // se o usuário cancelou, mantém "cancelled"
+      if ((await readState()) !== 'cancelled') await writeState('done');
+      break;
+  }
+}
+
 chrome.runtime.onMessage.addListener(
-  (message: PopupMessage, _sender, sendResponse: (reply: StatusReply) => void) => {
+  (message: PopupMessage | ContentEvent, _sender, sendResponse: (reply?: StatusReply) => void) => {
+    if (message.type === 'LEAD_FOUND' || message.type === 'PROGRESS' || message.type === 'DONE') {
+      void handleContentEvent(message);
+      return false;
+    }
     handlePopupMessage(message).then(sendResponse);
     return true; // resposta assíncrona
   },
