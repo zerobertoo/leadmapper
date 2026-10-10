@@ -2,3 +2,7 @@ node_modules/
 dist/
 *.log
 *.csv
+
+# conteúdo de terceiros, regenerável pelas skills
+.agents/
+.claude/
