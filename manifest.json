@@ -10,7 +10,7 @@
     "scripting",
     "sidePanel"
   ],
-  "minimum_chrome_version": "116",
+  "minimum_chrome_version": "118",
   "host_permissions": [
     "https://www.google.com/maps/*",
     "https://www.google.com.br/maps/*",
