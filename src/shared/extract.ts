@@ -14,12 +14,13 @@ const FILE_EXTENSIONS = new Set([
 const BLOCKED_DOMAINS = [
   'example.com', 'example.org', 'email.com', 'domain.com', 'dominio.com', 'seudominio.com',
   'seudominio.com.br', 'meudominio.com', 'meudominio.com.br', 'yourdomain.com', 'test.com',
-  'teste.com', 'exemplo.com', 'exemplo.com.br', 'exemplo.org', 'whatsapp.com', 'whatsapp.com.br',
+  'teste.com', 'exemplo.com', 'exemplo.com.br', 'exemplo.org', 'email.com.br', 'whatsapp.com', 'whatsapp.com.br',
   'sentry.io', 'wixpress.com', 'wix.com', 'godaddy.com', 'squarespace.com',
   'shopify.com', 'wordpress.com', 'cloudflare.com', 'w3.org', 'schema.org',
 ];
 
-const BLOCKED_LOCAL_PARTS = /^(no-?reply|do-?not-?reply)$/i;
+// no-reply e textos de modelo de formulário ("seuemail@...")
+const BLOCKED_LOCAL_PARTS = /^(no-?reply|do-?not-?reply|seu-?e-?mail|seu-?nome|nome|e-?mail)$/i;
 
 // limite por empresa, para não guardar a lista de e-mails de um blog inteiro
 export const MAX_EMAILS = 5;

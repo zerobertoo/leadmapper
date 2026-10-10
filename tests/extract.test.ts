@@ -30,7 +30,9 @@ describe('extractEmails', () => {
   });
 
   it('descarta e-mails de exemplo em português e do WhatsApp', () => {
-    expect(extractEmails('exemplo@exemplo.com mail@exemplo.com.br form-whats@whatsapp.com.br')).toEqual([]);
+    expect(
+      extractEmails('exemplo@exemplo.com mail@exemplo.com.br form-whats@whatsapp.com.br seuemail@email.com.br'),
+    ).toEqual([]);
   });
 
   it('retorna lista vazia quando não há e-mail', () => {
