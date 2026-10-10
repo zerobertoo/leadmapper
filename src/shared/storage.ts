@@ -46,8 +46,18 @@ export async function patchLead(id: string, patch: EnrichmentPatch): Promise<voi
 
   const lead = leads[index];
   const union = (a: string[], b: string[] = []) => [...new Set([...a, ...b])];
+  // fonte e data dos dados que o site acrescentou (RF4.2)
+  const fromSite = { origem: 'site', em: new Date().toISOString() } as const;
+  const gained = (field: 'emails' | 'whatsapp' | 'redes_sociais') =>
+    (patch[field] ?? []).some((value) => !lead[field].includes(value));
   leads[index] = {
     ...lead,
+    fontes: {
+      ...lead.fontes,
+      ...(gained('emails') && { emails: fromSite }),
+      ...(gained('whatsapp') && { whatsapp: fromSite }),
+      ...(gained('redes_sociais') && { redes_sociais: fromSite }),
+    },
     emails: union(lead.emails, patch.emails),
     whatsapp: union(lead.whatsapp, patch.whatsapp),
     redes_sociais: union(lead.redes_sociais, patch.redes_sociais),

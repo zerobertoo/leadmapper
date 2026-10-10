@@ -107,14 +107,19 @@ export function isPanelForCard(check: PanelCheck): boolean {
 export function extractLead(panel: HTMLElement, card: ResultCard, searchQuery: string): Lead {
   const { rating, reviews } = parseRating(textOf(panel, SELECTORS.ratingBlock));
   const site = queryFirst<HTMLAnchorElement>(panel, SELECTORS.website)?.href ?? '';
+  const collectedAt = new Date().toISOString();
+  const categoria = textOf(panel, SELECTORS.category);
+  const endereco = textOf(panel, SELECTORS.address);
+  const telefone = textOf(panel, SELECTORS.phone);
+  const fromMaps = { origem: 'maps', em: collectedAt } as const;
   return {
     id: crypto.randomUUID(),
     nome: normalizeText(panel.getAttribute('aria-label')) || card.name,
-    categoria: textOf(panel, SELECTORS.category),
+    categoria,
     nota: rating,
     avaliacoes: reviews,
-    endereco: textOf(panel, SELECTORS.address),
-    telefone: textOf(panel, SELECTORS.phone),
+    endereco,
+    telefone,
     telefone_e164: '',
     eh_celular: false,
     site,
@@ -124,9 +129,24 @@ export function extractLead(panel: HTMLElement, card: ResultCard, searchQuery: s
     redes_sociais: [],
     url_maps: card.url,
     busca_origem: searchQuery,
-    coletado_em: new Date().toISOString(),
+    coletado_em: collectedAt,
     status_enriquecimento: site ? 'pendente' : 'sem_site',
+    fontes: {
+      ...(categoria && { categoria: fromMaps }),
+      ...(endereco && { endereco: fromMaps }),
+      ...(telefone && { telefone: fromMaps }),
+      ...(site && { site: fromMaps }),
+    },
   };
+}
+
+/**
+ * Página de verificação do Google (captcha, "tráfego incomum") ou de consentimento.
+ * Só detecta, para pausar com mensagem clara; nunca tenta contornar.
+ */
+export function detectBlock(root: ParentNode, url: string): boolean {
+  if (/\/sorry\/|consent\.google\./i.test(url)) return true;
+  return root.querySelector('iframe[src*="recaptcha"], form[action*="/sorry/"]') !== null;
 }
 
 /** Campos que, vazios em quase todos os itens, indicam seletor quebrado. */

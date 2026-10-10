@@ -13,6 +13,7 @@ import {
 } from '../shared/types';
 import { SELECTORS } from './selectors';
 import {
+  detectBlock,
   extractLead,
   fieldWarnings,
   findDetailsPanel,
@@ -27,6 +28,9 @@ import {
 const DETAILS_TIMEOUT_MS = 8000;
 const POLL_INTERVAL_MS = 200;
 const MAX_IDLE_SCROLLS = 3;
+const NEW_CARDS_WAIT_MS = 5000;
+const BLOCKED_MESSAGE =
+  'O Google pediu uma verificação. Resolva-a na aba do Maps e inicie a coleta de novo.';
 const MAPS_CHANGED_MESSAGE =
   'O Google mudou a página do Maps; atualize a extensão ou tente de novo.';
 
@@ -107,6 +111,12 @@ async function scrollListToEnd(settings: CollectionSettings): Promise<void> {
     const feed = queryFirst(document, SELECTORS.resultsFeed);
     feed?.scrollTo({ top: feed.scrollHeight, behavior: 'smooth' });
     await randomDelay(settings.speed);
+    // rede lenta: espera os cartões novos chegarem antes de contar rolagem ociosa
+    const deadline = Date.now() + NEW_CARDS_WAIT_MS;
+    while (listCards().length <= countBefore && Date.now() < deadline) {
+      await checkpoint();
+      await sleep(POLL_INTERVAL_MS);
+    }
     idleScrolls = listCards().length > countBefore ? 0 : idleScrolls + 1;
   }
 }
@@ -196,12 +206,19 @@ async function runCollection(settings: CollectionSettings): Promise<void> {
     sendEvent({ type: 'PROGRESS', progress: { ...progress } });
 
     if (cards.length === 0) {
-      errorMessage = MAPS_CHANGED_MESSAGE;
+      errorMessage = detectBlock(document, location.href) ? BLOCKED_MESSAGE : MAPS_CHANGED_MESSAGE;
+      sendEvent({ type: 'LOG', text: `Nenhum cartão encontrado: ${errorMessage}` });
       return;
     }
 
     for (const card of cards) {
       await checkpoint();
+      if (detectBlock(document, location.href)) {
+        errorMessage = BLOCKED_MESSAGE;
+        sendEvent({ type: 'LOG', text: 'Verificação do Google detectada; coleta pausada' });
+        break;
+      }
+      progress.current = card.name;
       if (knownPlaces.has(placeKey(card.url))) {
         // já coletado antes (retomada ou busca sobreposta)
         progress.skipped++;
@@ -219,13 +236,14 @@ async function runCollection(settings: CollectionSettings): Promise<void> {
         collected.push(lead);
         const fresh = fieldWarnings(collected).filter((message) => !warned.has(message));
         if (fresh.length > 0) {
-          fresh.forEach((message) => warned.add(message));
+          for (const message of fresh) warned.add(message);
           sendEvent({ type: 'WARNING', messages: fresh });
         }
       } catch (error) {
         if (error instanceof CancelledError) throw error;
         // RF1.5: registra o erro e segue para o próximo
         console.warn('[LeadMapper] falha ao coletar item:', card.name, error);
+        sendEvent({ type: 'LOG', text: `Falha em "${card.name}": ${error instanceof Error ? error.message : String(error)}` });
         progress.failures++;
       }
       progress.processed++;
@@ -235,20 +253,22 @@ async function runCollection(settings: CollectionSettings): Promise<void> {
 
     // nenhum item deu certo: quase certamente os seletores deixaram de funcionar
     const attempted = progress.processed - progress.skipped;
-    if (attempted > 0 && progress.failures === attempted) errorMessage = MAPS_CHANGED_MESSAGE;
+    if (!errorMessage && attempted > 0 && progress.failures === attempted) errorMessage = MAPS_CHANGED_MESSAGE;
   } catch (error) {
     if (!(error instanceof CancelledError)) {
       console.error('[LeadMapper] coleta interrompida:', error);
       errorMessage = MAPS_CHANGED_MESSAGE;
     }
   } finally {
-    if (disposed) return;
-    if (errorMessage && !cancelRequested) {
-      state = 'error';
-      sendEvent({ type: 'ERROR', message: errorMessage, progress });
-    } else {
-      state = cancelRequested ? 'cancelled' : 'done';
-      sendEvent({ type: 'DONE', progress });
+    progress.current = '';
+    if (!disposed) {
+      if (errorMessage && !cancelRequested) {
+        state = 'error';
+        sendEvent({ type: 'ERROR', message: errorMessage, progress });
+      } else {
+        state = cancelRequested ? 'cancelled' : 'done';
+        sendEvent({ type: 'DONE', progress });
+      }
     }
   }
 }

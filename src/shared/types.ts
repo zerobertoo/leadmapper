@@ -50,6 +50,16 @@ export interface Lead {
   busca_origem: string;
   coletado_em: string;
   status_enriquecimento: EnrichmentStatus;
+  /** De onde veio cada dado e quando (RF4.2), para pedidos de titulares. */
+  fontes?: Partial<Record<SourcedField, FieldSource>>;
+}
+
+export type SourcedField = 'categoria' | 'endereco' | 'telefone' | 'site' | 'emails' | 'whatsapp' | 'redes_sociais';
+
+export interface FieldSource {
+  origem: 'maps' | 'site';
+  /** ISO 8601 */
+  em: string;
 }
 
 /** Contadores exibidos no popup. */
@@ -62,9 +72,18 @@ export interface Progress {
   failures: number;
   /** Empresas puladas por já estarem salvas (retomada ou busca sobreposta). */
   skipped: number;
+  /** Nome da empresa em processamento (vazio fora da coleta). */
+  current: string;
 }
 
-export const EMPTY_PROGRESS: Progress = { found: 0, processed: 0, withPhone: 0, failures: 0, skipped: 0 };
+export const EMPTY_PROGRESS: Progress = {
+  found: 0,
+  processed: 0,
+  withPhone: 0,
+  failures: 0,
+  skipped: 0,
+  current: '',
+};
 
 /** Mensagens aceitas pelo service worker vindas do popup. */
 export type PopupMessage =
@@ -81,7 +100,9 @@ export type ContentEvent =
   | { type: 'DONE'; progress: Progress }
   | { type: 'ERROR'; message: string; progress: Progress }
   // campo vazio em quase todos os itens: coleta segue, o popup mostra o aviso
-  | { type: 'WARNING'; messages: string[] };
+  | { type: 'WARNING'; messages: string[] }
+  // linha do log de diagnóstico local (falha de item, bloqueio etc.)
+  | { type: 'LOG'; text: string };
 
 /** Mensagens aceitas pelo content script vindas do service worker. */
 export type ContentMessage =
@@ -113,6 +134,8 @@ export const STORAGE_KEYS = {
   errorMessage: 'errorMessage',
   // avisos de campos vazios na coleta atual (string[])
   warnings: 'warnings',
+  // instante (ms) em que a coleta atual começou, para estimar o tempo restante
+  startedAt: 'startedAt',
   // se os sites das empresas devem ser visitados na coleta atual
   enrichSites: 'enrichSites',
 } as const;
@@ -124,6 +147,8 @@ export interface PopupOptions {
   enrichSites: boolean;
   discardWithoutContact: boolean;
   exportScope: 'all' | 'current';
+  /** Na exportação, mantém só e-mails genéricos (contato@, vendas@…). */
+  genericEmailsOnly: boolean;
 }
 
 export const OPTIONS_STORAGE_KEY = 'options';
@@ -132,6 +157,11 @@ export const DEFAULT_OPTIONS: PopupOptions = {
   ...DEFAULT_SETTINGS,
   discardWithoutContact: false,
   exportScope: 'all',
+  genericEmailsOnly: false,
 };
+
+/** Log de diagnóstico local: anel dos últimos eventos, fora de STORAGE_KEYS para sobreviver a "Limpar lista". */
+export const LOG_STORAGE_KEY = 'diagnosticLog';
+export const MAX_LOG_ENTRIES = 200;
 
 export const MAX_LIMIT = 500;
