@@ -35,6 +35,8 @@ function installChrome(initial: Record<string, unknown> = {}) {
   const messageListeners: Listener[] = [];
   const alarmListeners: Array<(alarm: { name: string }) => unknown> = [];
   const badge = { text: '' };
+  // quantas próximas gravações de `leads` devem falhar (simula disco cheio, por exemplo)
+  const failures = { leadsSet: 0 };
 
   const pick = (keys: string | string[] | null) => {
     const names = keys === null ? Object.keys(store) : Array.isArray(keys) ? keys : [keys];
@@ -45,7 +47,13 @@ function installChrome(initial: Record<string, unknown> = {}) {
     storage: {
       local: {
         get: async (keys: string | string[] | null) => pick(keys),
-        set: async (items: Record<string, unknown>) => void Object.assign(store, items),
+        set: async (items: Record<string, unknown>) => {
+          if ('leads' in items && failures.leadsSet > 0) {
+            failures.leadsSet--;
+            throw new Error('QUOTA_BYTES');
+          }
+          Object.assign(store, items);
+        },
         remove: async (keys: string | string[]) => {
           for (const key of Array.isArray(keys) ? keys : [keys]) delete store[key];
         },
@@ -71,13 +79,16 @@ function installChrome(initial: Record<string, unknown> = {}) {
     scripting: { executeScript: vi.fn() },
   });
 
+  const messageListener = (...args: Parameters<Listener>) => messageListeners[0](...args);
+
   const send = (message: unknown) =>
     new Promise<unknown>((resolve) => {
-      const returned = messageListeners[0](message, {}, resolve);
+      // eventos do content script só valem com uma aba como remetente
+      const returned = messageListeners[0](message, { tab: MAPS_TAB }, resolve);
       if (returned !== true) resolve(undefined);
     });
 
-  return { store, badge, send, alarmListeners };
+  return { store, badge, send, messageListener, alarmListeners, failures };
 }
 
 beforeEach(() => {
@@ -103,6 +114,78 @@ describe('service worker', () => {
     const reply = (await send({ type: 'CLEAR' })) as StatusReply;
     expect(reply).toMatchObject({ kind: 'ready', state: 'idle' });
     expect(store.leads).toBeUndefined();
+  });
+
+  it('uma gravação que falha não trava as seguintes e o lead não se perde', async () => {
+    const { store, send, failures } = installChrome();
+    await import('../src/background/index');
+    const [first, second] = [makeLead({ nome: 'A', telefone: '(11) 3000-0001' }), makeLead({ nome: 'B', telefone: '(11) 3000-0002' })];
+
+    failures.leadsSet = 1;
+    await send({ type: 'LEAD_FOUND', lead: first });
+    await vi.waitFor(() => expect(failures.leadsSet).toBe(0));
+    await send({ type: 'LEAD_FOUND', lead: second });
+
+    // o lote que falhou volta ao buffer e sai junto com o seguinte
+    await vi.waitFor(() => expect((store.leads as Lead[]).map((lead) => lead.nome).sort()).toEqual(['A', 'B']));
+  });
+
+  it('depois de limpar, um lote que tinha falhado não ressuscita', async () => {
+    const { store, send, failures } = installChrome();
+    await import('../src/background/index');
+
+    failures.leadsSet = 1;
+    await send({ type: 'LEAD_FOUND', lead: makeLead() });
+    await vi.waitFor(() => expect(failures.leadsSet).toBe(0));
+    await send({ type: 'CLEAR' });
+    await send({ type: 'LEAD_FOUND', lead: makeLead({ nome: 'Nova', telefone: '(11) 3000-0009' }) });
+
+    await vi.waitFor(() => expect(store.leads).toHaveLength(1));
+    expect((store.leads as Lead[])[0].nome).toBe('Nova');
+  });
+
+  it('ignora evento de coleta sem aba de origem ou com lead malformado', async () => {
+    const { store, messageListener } = installChrome();
+    await import('../src/background/index');
+
+    messageListener({ type: 'LEAD_FOUND', lead: makeLead() }, {}, () => undefined);
+    messageListener({ type: 'LEAD_FOUND', lead: { id: 'x' } }, { tab: MAPS_TAB }, () => undefined);
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(store.leads).toBeUndefined();
+  });
+
+  it('visita até 3 sites ao mesmo tempo, inclusive os que chegam no meio', async () => {
+    let inFlight = 0;
+    let maxInFlight = 0;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        inFlight++;
+        maxInFlight = Math.max(maxInFlight, inFlight);
+        await new Promise((resolve) => setTimeout(resolve, 60));
+        inFlight--;
+        // home que não abre: um pedido por site e status "erro"
+        return new Response('', { status: 404 });
+      }),
+    );
+    const leads = ['a', 'b', 'c', 'd'].map((letter) =>
+      makeLead({
+        nome: letter,
+        telefone: '',
+        site: `https://${letter}.com.br/`,
+        url_maps: `https://www.google.com/maps/place/${letter}/data=!1s0x${letter}:0x1`,
+        status_enriquecimento: 'pendente',
+      }),
+    );
+    const { store, alarmListeners } = installChrome({ collectionState: 'enriching', enrichSites: true, leads });
+    await import('../src/background/index');
+
+    await alarmListeners[0]({ name: 'enrichment-watchdog' });
+    await vi.waitFor(() => {
+      expect((store.leads as Lead[]).every((lead) => lead.status_enriquecimento === 'erro')).toBe(true);
+    }, { timeout: 5000 });
+    expect(maxInFlight).toBe(3);
+    await vi.waitFor(() => expect(store.collectionState).toBe('done'));
   });
 
   it('START marca a coleta como em andamento e anota o horário de início', async () => {

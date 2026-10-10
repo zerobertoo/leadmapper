@@ -1,6 +1,6 @@
 import { deriveFields } from '../shared/dedupe';
 import { appendLog } from '../shared/diagnostic';
-import { extractDomain, isNonWebsite } from '../shared/domain';
+import { extractDomain, isNonWebsite, isPrivateHost } from '../shared/domain';
 import {
   clearAll,
   deleteLeads,
@@ -27,7 +27,6 @@ import {
   type StatusReply,
 } from '../shared/types';
 import { enrichSite } from './enrich';
-import { runWithConcurrency } from './queue';
 
 const MAPS_URL_PATTERN = /^https:\/\/www\.google\.com(\.br)?\/maps/;
 // cada lead é gravado na hora: o service worker pode morrer a qualquer momento
@@ -43,20 +42,44 @@ const STATE_AFTER_COMMAND = {
 
 // leads aguardando gravação; se o service worker morrer, perde no máximo BATCH_SIZE - 1 (0 hoje)
 let pendingBatch: Lead[] = [];
-// serializa as gravações, pois upsertLeads faz leitura + escrita
+// serializa as gravações, pois upsertLeads faz leitura + escrita; nunca fica rejeitada
 let writeChain: Promise<void> = Promise.resolve();
 // serializa as gravações do log de diagnóstico (leitura + escrita)
 let logChain: Promise<void> = Promise.resolve();
+// muda a cada CLEAR: um lote que falhou antes do CLEAR não pode voltar para a fila depois dele
+let clearEpoch = 0;
+
+/**
+ * Coloca uma gravação na fila. Uma falha é registrada no log e não trava os
+ * passos seguintes: a cadeia continua utilizável.
+ */
+function enqueueWrite(job: () => Promise<void>): Promise<void> {
+  writeChain = writeChain.then(job).catch((error: unknown) => {
+    logChain = logChain
+      .then(() => appendLog(`Falha ao gravar: ${error instanceof Error ? error.message : String(error)}`))
+      .catch(() => undefined);
+  });
+  return writeChain;
+}
 
 function flushBatch(): Promise<void> {
   const leads = pendingBatch;
   pendingBatch = [];
-  if (leads.length > 0) {
-    writeChain = writeChain.then(() => upsertLeads(leads));
-    // leads novos podem ter site para visitar
-    void writeChain.then(processPending);
-  }
-  return writeChain;
+  if (leads.length === 0) return writeChain;
+
+  const epoch = clearEpoch;
+  const written = enqueueWrite(async () => {
+    try {
+      await upsertLeads(leads);
+    } catch (error) {
+      // devolve os leads ao buffer: a próxima gravação tenta de novo
+      if (epoch === clearEpoch) pendingBatch = [...leads, ...pendingBatch];
+      throw error;
+    }
+  });
+  // leads novos podem ter site para visitar
+  void written.then(processPending);
+  return written;
 }
 
 // selo no ícone: o popup fecha ao perder o foco, então o progresso precisa aparecer fora dele
@@ -88,8 +111,7 @@ async function setState(state: CollectionState): Promise<void> {
 
 // ---- enriquecimento pelos sites (fila reconstruída a partir de status_enriquecimento) ----
 
-let enrichmentRunning = false;
-let rerunRequested = false;
+let activeLanes = 0;
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
@@ -112,8 +134,8 @@ async function enrichLead(lead: Lead): Promise<void> {
 
   const domain = extractDomain(lead.site);
   let patch: EnrichmentPatch;
-  if (!domain || isNonWebsite(lead.site)) {
-    // perfil de rede social ou link de WhatsApp não é site: a URL já foi guardada (RF2.5)
+  if (!domain || isNonWebsite(lead.site) || isPrivateHost(domain)) {
+    // perfil de rede social, link de WhatsApp ou endereço da rede local não é site: a URL já foi guardada (RF2.5)
     patch = { status_enriquecimento: 'sem_site' };
   } else {
     const result = await enrichSite(lead.site);
@@ -124,40 +146,62 @@ async function enrichLead(lead: Lead): Promise<void> {
       status_enriquecimento: result.status,
     };
   }
-  writeChain = writeChain.then(() => patchLead(lead.id, patch));
-  await writeChain;
+  await enqueueWrite(() => patchLead(lead.id, patch));
 }
 
-async function drainQueue(): Promise<void> {
-  const attempted = new Set<string>();
-  for (;;) {
-    if (!(await isEnrichmentEnabled()) || !(await waitUntilActive())) return;
-    const pending = (await readLeads()).filter(
-      (lead) => lead.status_enriquecimento === 'pendente' && lead.site && !attempted.has(lead.id),
-    );
-    if (pending.length === 0) return;
-    for (const lead of pending) attempted.add(lead.id);
-    await runWithConcurrency(pending, ENRICHMENT_CONCURRENCY, enrichLead);
-  }
+// ids já tentados nesta rodada: um lead que falhou na gravação não entra em laço
+const attempted = new Set<string>();
+// as retiradas da fila são serializadas para duas faixas não pegarem o mesmo lead
+let takeChain: Promise<unknown> = Promise.resolve();
+
+async function pickNextPending(): Promise<Lead | null> {
+  if (!(await isEnrichmentEnabled()) || !(await waitUntilActive())) return null;
+  const next = (await readLeads()).find(
+    (lead) => lead.status_enriquecimento === 'pendente' && lead.site && !attempted.has(lead.id),
+  );
+  if (next) attempted.add(next.id);
+  return next ?? null;
 }
 
-/** Processa os leads pendentes, com no máximo 3 sites em paralelo (RF2.4). */
-async function processPending(): Promise<void> {
-  if (enrichmentRunning) {
-    rerunRequested = true;
-    return;
-  }
-  enrichmentRunning = true;
+function takePending(): Promise<Lead | null> {
+  const taken = takeChain.then(pickNextPending);
+  takeChain = taken.catch(() => undefined);
+  return taken;
+}
+
+/** Fecha a rodada quando a última faixa termina: a coleta só acaba de fato aqui. */
+async function finishEnrichment(): Promise<void> {
+  if (activeLanes > 0) return;
+  attempted.clear();
+  if ((await readState()) === 'enriching' && activeLanes === 0) await setState('done');
+}
+
+async function runLane(): Promise<void> {
+  activeLanes++;
   try {
-    do {
-      rerunRequested = false;
-      await drainQueue();
-    } while (rerunRequested);
+    for (;;) {
+      const lead = await takePending();
+      if (!lead) return;
+      try {
+        await enrichLead(lead);
+      } catch {
+        // o lead fica pendente e não é retentado nesta rodada; a faixa segue
+      }
+    }
   } finally {
-    enrichmentRunning = false;
+    activeLanes--;
+    await finishEnrichment().catch(() => undefined);
   }
-  // fila vazia depois do fim da coleta: a coleta termina de fato aqui
-  if ((await readState()) === 'enriching' && !enrichmentRunning) await setState('done');
+}
+
+/**
+ * Completa as faixas até 3 sites em paralelo (RF2.4). Cada faixa retira o
+ * próximo pendente quando termina, então leads que chegam durante a coleta
+ * entram sem esperar o fim de uma rodada.
+ */
+function processPending(): Promise<void> {
+  const missing = Math.max(ENRICHMENT_CONCURRENCY - activeLanes, 0);
+  return Promise.all(Array.from({ length: missing }, runLane)).then(() => undefined);
 }
 
 async function hasPendingSites(): Promise<boolean> {
@@ -187,8 +231,10 @@ async function handlePopupMessage(message: PopupMessage): Promise<StatusReply> {
   if (message.type === 'CLEAR') {
     // esvazia o buffer antes: um flush atrasado reintroduziria leads apagados
     pendingBatch = [];
-    await writeChain.catch(() => undefined);
-    await clearAll();
+    clearEpoch++;
+    // o apagamento entra na fila: um patch em voo não pode regravar a lista depois dele
+    await enqueueWrite(clearAll);
+    attempted.clear();
     await chrome.alarms.clear(WATCHDOG_ALARM);
     await updateBadge('idle');
     return { kind: 'ready', state: 'idle', hasResults: false };
@@ -196,10 +242,9 @@ async function handlePopupMessage(message: PopupMessage): Promise<StatusReply> {
 
   if (message.type === 'UPDATE_LEADS' || message.type === 'DELETE_LEADS') {
     // edição vinda do painel lateral: entra na mesma fila de gravações do service worker
-    writeChain = writeChain.then(() =>
+    await enqueueWrite(() =>
       message.type === 'UPDATE_LEADS' ? editLeads(message.ids, message.edit) : deleteLeads(message.ids),
     );
-    await writeChain;
     return { kind: 'ready', state: await readState(), hasResults: false };
   }
 
@@ -267,7 +312,7 @@ async function handleContentEvent(event: ContentEvent): Promise<void> {
       await updateBadge('running', event.progress.processed);
       break;
     case 'LOG':
-      logChain = logChain.then(() => appendLog(event.text));
+      logChain = logChain.then(() => appendLog(event.text)).catch(() => undefined);
       await logChain;
       break;
     case 'WARNING': {
@@ -301,8 +346,23 @@ async function handleContentEvent(event: ContentEvent): Promise<void> {
   }
 }
 
+// defesa em profundidade: um LEAD_FOUND sem as listas quebraria deriveFields e a gravação
+function isWellFormedEvent(event: ContentEvent): boolean {
+  if (event.type !== 'LEAD_FOUND') return true;
+  const { lead } = event;
+  return (
+    typeof lead?.id === 'string' &&
+    typeof lead.nome === 'string' &&
+    typeof lead.site === 'string' &&
+    typeof lead.telefone === 'string' &&
+    Array.isArray(lead.emails) &&
+    Array.isArray(lead.whatsapp) &&
+    Array.isArray(lead.redes_sociais)
+  );
+}
+
 chrome.runtime.onMessage.addListener(
-  (message: PopupMessage | ContentEvent, _sender, sendResponse: (reply?: StatusReply) => void) => {
+  (message: PopupMessage | ContentEvent, sender, sendResponse: (reply?: StatusReply) => void) => {
     if (
       message.type === 'LEAD_FOUND' ||
       message.type === 'PROGRESS' ||
@@ -311,7 +371,8 @@ chrome.runtime.onMessage.addListener(
       message.type === 'WARNING' ||
       message.type === 'LOG'
     ) {
-      void handleContentEvent(message);
+      // eventos de coleta só vêm de uma aba (o content script); o formato é conferido antes de gravar
+      if (sender.tab && isWellFormedEvent(message)) void handleContentEvent(message).catch(() => undefined);
       return false;
     }
     handlePopupMessage(message).then(sendResponse, (error: unknown) =>
