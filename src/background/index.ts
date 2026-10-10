@@ -1,7 +1,9 @@
-import { appendLeads, readState, writeProgress, writeState } from '../shared/storage';
+import { deriveFields } from '../shared/dedupe';
+import { readState, upsertLeads, writeProgress, writeState } from '../shared/storage';
 import {
   DEFAULT_SETTINGS,
   EMPTY_PROGRESS,
+  STORAGE_KEYS,
   type CollectionState,
   type ContentEvent,
   type ContentMessage,
@@ -23,13 +25,13 @@ const STATE_AFTER_COMMAND = {
 
 // leads aguardando gravação; se o service worker morrer, perde no máximo BATCH_SIZE - 1
 let pendingBatch: Lead[] = [];
-// serializa as gravações, pois appendLeads faz leitura + escrita
+// serializa as gravações, pois upsertLeads faz leitura + escrita
 let writeChain: Promise<void> = Promise.resolve();
 
 function flushBatch(): Promise<void> {
   const leads = pendingBatch;
   pendingBatch = [];
-  if (leads.length > 0) writeChain = writeChain.then(() => appendLeads(leads));
+  if (leads.length > 0) writeChain = writeChain.then(() => upsertLeads(leads));
   return writeChain;
 }
 
@@ -69,6 +71,7 @@ async function handlePopupMessage(message: PopupMessage): Promise<StatusReply> {
 
     if (message.type === 'START') {
       await writeProgress(EMPTY_PROGRESS);
+      await chrome.storage.local.set({ [STORAGE_KEYS.duplicates]: 0 });
       const reply = await sendToContent(tab.id!, { type: 'START', settings: DEFAULT_SETTINGS });
       await writeState('running');
       return { kind: 'ready', state: 'running', hasResults: reply.hasResults };
@@ -88,7 +91,7 @@ async function handlePopupMessage(message: PopupMessage): Promise<StatusReply> {
 async function handleContentEvent(event: ContentEvent): Promise<void> {
   switch (event.type) {
     case 'LEAD_FOUND':
-      pendingBatch.push(event.lead);
+      pendingBatch.push(deriveFields(event.lead));
       if (pendingBatch.length >= BATCH_SIZE) await flushBatch();
       break;
     case 'PROGRESS':

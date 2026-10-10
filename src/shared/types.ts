@@ -85,4 +85,6 @@ export const STORAGE_KEYS = {
   state: 'collectionState',
   progress: 'progress',
   leads: 'leads',
+  // duplicados mesclados desde o início da coleta atual
+  duplicates: 'duplicates',
 } as const;

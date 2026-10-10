@@ -1,3 +1,4 @@
+import { mergeIntoList } from './dedupe';
 import {
   EMPTY_PROGRESS,
   STORAGE_KEYS,
@@ -11,10 +12,29 @@ export async function readLeads(): Promise<Lead[]> {
   return (stored[STORAGE_KEYS.leads] as Lead[] | undefined) ?? [];
 }
 
-// leitura e escrita não são atômicas: quem chama deve serializar as chamadas
-export async function appendLeads(newLeads: Lead[]): Promise<void> {
-  const leads = await readLeads();
-  await chrome.storage.local.set({ [STORAGE_KEYS.leads]: [...leads, ...newLeads] });
+/**
+ * Grava leads novos mesclando duplicados com os já salvos (inclusive de buscas
+ * anteriores). Leitura e escrita não são atômicas: quem chama deve serializar.
+ */
+export async function upsertLeads(incoming: Lead[]): Promise<void> {
+  const stored = await chrome.storage.local.get([STORAGE_KEYS.leads, STORAGE_KEYS.duplicates]);
+  const existing = (stored[STORAGE_KEYS.leads] as Lead[] | undefined) ?? [];
+  const previousDuplicates = (stored[STORAGE_KEYS.duplicates] as number | undefined) ?? 0;
+  const { leads, duplicates } = mergeIntoList(existing, incoming);
+  await chrome.storage.local.set({
+    [STORAGE_KEYS.leads]: leads,
+    [STORAGE_KEYS.duplicates]: previousDuplicates + duplicates,
+  });
+}
+
+export async function readDuplicates(): Promise<number> {
+  const stored = await chrome.storage.local.get(STORAGE_KEYS.duplicates);
+  return (stored[STORAGE_KEYS.duplicates] as number | undefined) ?? 0;
+}
+
+/** Apaga leads, contadores e estado (RF4.3). */
+export function clearAll(): Promise<void> {
+  return chrome.storage.local.remove(Object.values(STORAGE_KEYS));
 }
 
 export async function readState(): Promise<CollectionState> {
