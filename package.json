@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
-    "build": "npm run clean && cross-env ENTRY=background vite build && cross-env ENTRY=content vite build && cross-env ENTRY=popup vite build",
+    "build": "npm run clean && cross-env ENTRY=background vite build && cross-env ENTRY=content vite build && cross-env ENTRY=popup vite build && cross-env ENTRY=sidepanel vite build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
     "lint": "biome lint"

@@ -39,6 +39,7 @@ const limitInput = $<HTMLInputElement>('#limit');
 const speedSelect = $<HTMLSelectElement>('#speed');
 const optionsSection = $<HTMLElement>('#options');
 const exportButton = $<HTMLButtonElement>('#export');
+const openListButton = $<HTMLButtonElement>('#open-list');
 const clearButton = $<HTMLButtonElement>('#clear');
 const confirmDialog = $<HTMLDialogElement>('#confirm-clear');
 const buttons = {
@@ -195,6 +196,7 @@ async function renderCounters(): Promise<void> {
   ]);
   totalLeads = leads.length;
   updateExportSection();
+  openListButton.hidden = totalLeads === 0;
 
   const withSite = leads.filter((lead) => lead.site && !isNonWebsite(lead.site));
   const visited = withSite.filter((lead) => lead.status_enriquecimento !== 'pendente').length;
@@ -346,6 +348,12 @@ buttons.resume.addEventListener('click', () => void run({ type: 'RESUME' }));
 exportButton.addEventListener('click', () => void exportCsv());
 clearButton.addEventListener('click', () => void clearList());
 buttons.cancel.addEventListener('click', () => void run({ type: 'CANCEL' }));
+// o painel lateral só abre a partir de um gesto do usuário, como este clique
+openListButton.addEventListener('click', async () => {
+  const { id: windowId } = await chrome.windows.getCurrent();
+  if (windowId !== undefined) await chrome.sidePanel.open({ windowId });
+  window.close();
+});
 $('#copy-diagnostic').addEventListener('click', () => void copyDiagnostic());
 $('#lgpd-ack').addEventListener('click', () => {
   lgpdNotice.hidden = true;

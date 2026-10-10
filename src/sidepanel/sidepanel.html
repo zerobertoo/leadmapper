@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Leads · LeadMapper</title>
+    <link rel="stylesheet" href="./sidepanel.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>Leads</h1>
+        <p id="summary" role="status"></p>
+      </header>
+
+      <search id="filters" class="filters" aria-label="Filtros da lista">
+        <label class="wide">
+          Buscar
+          <input id="text" type="search" placeholder="nome, bairro, telefone, e-mail, tag" autocomplete="off" />
+        </label>
+        <label>
+          Busca de origem
+          <select id="search"></select>
+        </label>
+        <label>
+          Status
+          <select id="status"></select>
+        </label>
+        <label>
+          Ordenar por
+          <select id="sort">
+            <option value="recentes">Mais recentes</option>
+            <option value="nome">Nome (A–Z)</option>
+            <option value="nota">Nota</option>
+            <option value="avaliacoes">Avaliações</option>
+          </select>
+        </label>
+        <label class="checkbox">
+          <input id="only-contact" type="checkbox" />
+          <span>Só com contato</span>
+        </label>
+      </search>
+
+      <section class="bulk" aria-label="Ações na lista">
+        <label class="checkbox">
+          <input id="select-all" type="checkbox" />
+          <span id="select-all-label">Selecionar os filtrados</span>
+        </label>
+        <div class="bulk-row">
+          <label>
+            Marcar como
+            <select id="bulk-status"></select>
+          </label>
+          <button id="apply-status" type="button">Aplicar</button>
+        </div>
+        <div class="bulk-row">
+          <label>
+            Exportar
+            <select id="export-format">
+              <option value="csv">CSV (Excel)</option>
+              <option value="json">JSON</option>
+              <option value="vcf">vCard (contatos)</option>
+            </select>
+          </label>
+          <button id="export" type="button">Exportar</button>
+        </div>
+        <button id="remove" type="button" class="danger">Remover selecionados</button>
+      </section>
+
+      <div class="table-wrapper">
+        <table>
+          <caption class="visually-hidden">Leads coletados</caption>
+          <thead>
+            <tr>
+              <th scope="col">Empresa</th>
+              <th scope="col">Telefone</th>
+              <th scope="col">E-mail</th>
+              <th scope="col">Status</th>
+              <th scope="col">Tags</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+      <p id="empty" class="empty" hidden>Nenhum lead com esses filtros.</p>
+      <button id="more" type="button" hidden>Mostrar mais</button>
+    </main>
+
+    <dialog id="confirm-remove" closedby="any" aria-labelledby="confirm-remove-title">
+      <form method="dialog">
+        <h2 id="confirm-remove-title">Remover leads?</h2>
+        <p id="confirm-remove-text"></p>
+        <div class="actions">
+          <button type="submit" value="cancel" autofocus>Cancelar</button>
+          <button type="submit" value="remove" class="danger">Remover</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script type="module" src="./sidepanel.ts"></script>
+  </body>
+</html>

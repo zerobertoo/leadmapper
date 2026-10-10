@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import { defineConfig, type Plugin } from 'vitest/config';
 
 /**
@@ -13,15 +13,21 @@ const scriptEntries: Record<string, string> = {
   content: 'src/content/maps.ts',
 };
 
-// copia o manifest.json para dist/ (só no passe do popup, que é o último)
+// páginas com HTML (popup e painel lateral): um passe de build por página
+const pageEntries: Record<string, string> = {
+  popup: 'src/popup/popup.html',
+  sidepanel: 'src/sidepanel/sidepanel.html',
+};
+
+// copia o manifest.json para dist/ com a versão do package.json (fonte única), no passe do popup
 const emitManifest: Plugin = {
   name: 'emit-manifest',
   generateBundle() {
-    this.emitFile({
-      type: 'asset',
-      fileName: 'manifest.json',
-      source: readFileSync(resolve(import.meta.dirname, 'manifest.json'), 'utf-8'),
-    });
+    const manifest = JSON.parse(readFileSync(resolve(import.meta.dirname, 'manifest.json'), 'utf-8'));
+    const pkg = JSON.parse(readFileSync(resolve(import.meta.dirname, 'package.json'), 'utf-8'));
+    manifest.version = pkg.version;
+    this.emitFile({ type: 'asset', fileName: 'manifest.json', source: `${JSON.stringify(manifest, null, 2)}
+` });
   },
 };
 
@@ -38,16 +44,18 @@ const scriptBuild = (file: string) => ({
 
 const test = { root: import.meta.dirname, include: ['tests/**/*.test.ts'] };
 
+const pageHtml = pageEntries[entry];
+
 export default defineConfig(
-  entry === 'popup'
+  pageHtml
     ? {
-        root: resolve(import.meta.dirname, 'src/popup'),
+        root: resolve(import.meta.dirname, dirname(pageHtml)),
         base: './',
-        plugins: [emitManifest],
+        plugins: entry === 'popup' ? [emitManifest] : [],
         build: {
           outDir: resolve(import.meta.dirname, 'dist'),
           emptyOutDir: false,
-          rollupOptions: { input: resolve(import.meta.dirname, 'src/popup/popup.html') },
+          rollupOptions: { input: resolve(import.meta.dirname, pageHtml) },
         },
         test,
       }
