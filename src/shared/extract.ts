@@ -25,11 +25,20 @@ const BLOCKED_LOCAL_PARTS = /^(no-?reply|do-?not-?reply|seu-?e-?mail|seu-?nome|n
 // limite por empresa, para não guardar a lista de e-mails de um blog inteiro
 export const MAX_EMAILS = 5;
 
+// TLDs genéricos aceitos; os de 2 letras (países) passam sempre
+const GENERIC_TLDS = new Set([
+  'com', 'net', 'org', 'edu', 'gov', 'mil', 'int', 'info', 'biz', 'app', 'dev', 'online', 'site',
+  'store', 'shop', 'tech', 'xyz', 'club', 'pro', 'blog', 'cloud', 'digital', 'email', 'agency',
+  'link', 'live', 'life', 'world', 'today', 'center', 'clinic', 'health', 'dental', 'med', 'adv',
+]);
+
 function isUsefulEmail(email: string): boolean {
   if (!FULL_EMAIL_PATTERN.test(email)) return false;
   const [local, domain] = email.split('@');
   const tld = domain.split('.').pop()!;
   if (FILE_EXTENSIONS.has(tld)) return false;
+  // "n@crisvet.taki": local de 1 letra e TLD inexistente são lixo de script
+  if (local.length < 2 || (tld.length > 2 && !GENERIC_TLDS.has(tld))) return false;
   if (BLOCKED_LOCAL_PARTS.test(local)) return false;
   return !BLOCKED_DOMAINS.some((blocked) => domain === blocked || domain.endsWith(`.${blocked}`));
 }
@@ -181,4 +190,26 @@ export function keepOwnEmails(emails: string[], siteDomain: string): string[] {
     ...kinds.filter(([, kind]) => kind === 'proprio'),
     ...kinds.filter(([, kind]) => kind === 'pessoal'),
   ].map(([email]) => email);
+}
+
+// parte local de e-mails de setor ou de caixa compartilhada
+const GENERIC_LOCAL_PARTS = new Set([
+  'contato', 'contatos', 'comercial', 'vendas', 'atendimento', 'sac', 'suporte', 'financeiro', 'adm',
+  'administrativo', 'administracao', 'recepcao', 'secretaria', 'faleconosco', 'info', 'ouvidoria',
+  'marketing', 'rh', 'compras', 'orcamento', 'orcamentos', 'agendamento', 'agenda', 'pedidos',
+  'loja', 'clinica', 'escritorio', 'geral', 'cliente', 'clientes', 'imprensa', 'duvidas', 'ajuda',
+]);
+
+export type EmailType = 'generico' | 'pessoal';
+
+/**
+ * `generico` para caixas de setor (contato@, vendas@); `pessoal` quando parece
+ * nome de gente (joao.silva@ ou provedor pessoal com nome próprio). É heurística:
+ * serve para o aviso de LGPD, não para validar contato.
+ */
+export function classifyEmailType(email: string): EmailType {
+  const [local] = email.split('@');
+  const normalized = local.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[._-]/g, '');
+  if (GENERIC_LOCAL_PARTS.has(normalized)) return 'generico';
+  return /^[a-z]{2,}[._-][a-z]{2,}$/.test(local) ? 'pessoal' : 'generico';
 }

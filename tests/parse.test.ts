@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
+  detectBlock,
   extractLead,
   fieldWarnings,
   findDetailsPanel,
@@ -150,5 +151,29 @@ describe('fieldWarnings', () => {
     const warnings = fieldWarnings(leads);
     expect(warnings).toHaveLength(1);
     expect(warnings[0]).toContain('nota');
+  });
+});
+
+describe('detectBlock', () => {
+  it('reconhece a página de verificação do Google', () => {
+    expect(detectBlock(document, 'https://www.google.com/sorry/index?continue=x')).toBe(true);
+    expect(detectBlock(document, 'https://consent.google.com/m?continue=x')).toBe(true);
+    document.body.innerHTML = '<form action="/sorry/index"></form>';
+    expect(detectBlock(document, 'https://www.google.com/maps/search/x')).toBe(true);
+  });
+
+  it('não confunde o Maps normal com bloqueio', () => {
+    document.body.innerHTML = fixture('maps-feed.html');
+    expect(detectBlock(document, 'https://www.google.com/maps/search/x')).toBe(false);
+  });
+});
+
+describe('fontes por campo', () => {
+  it('registra origem e data dos dados vindos do Maps', () => {
+    document.body.innerHTML = fixture('maps-panel-full.html');
+    const lead = extractLead(findDetailsPanel()!, { name: 'x', url: 'u', element: null as never }, 'q');
+    expect(lead.fontes?.telefone).toEqual({ origem: 'maps', em: lead.coletado_em });
+    expect(lead.fontes?.site?.origem).toBe('maps');
+    expect(lead.fontes?.emails).toBeUndefined();
   });
 });

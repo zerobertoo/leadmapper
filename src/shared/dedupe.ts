@@ -101,6 +101,7 @@ export function mergeLeads(first: Lead, second: Lead): Lead {
     other.url_maps, ...(base.urls_maps_extras ?? []), ...(other.urls_maps_extras ?? []),
   ].filter((url) => url && url !== base.url_maps);
   merged.urls_maps_extras = [...new Set(urls)];
+  merged.fontes = { ...other.fontes, ...base.fontes };
   if (other.status_enriquecimento === 'ok') merged.status_enriquecimento = 'ok';
   return deriveFields(merged as unknown as Lead);
 }

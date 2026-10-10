@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   classifyEmail,
+  classifyEmailType,
   extractEmails,
   extractSocialProfiles,
   extractWhatsappNumbers,
@@ -110,5 +111,21 @@ describe('e-mails de terceiros (agência, rede, modelo)', () => {
     expect(
       keepOwnEmails(['a@gmail.com', 'x@agencia.com.br', 'oi@loja.com.br'], 'loja.com.br'),
     ).toEqual(['oi@loja.com.br', 'a@gmail.com']);
+  });
+});
+
+describe('validação de e-mail e tipo', () => {
+  it('descarta TLD inexistente e parte local de 1 letra', () => {
+    expect(extractEmails('n@crisvet.taki ncontato@zee-dog.com a@loja.com.br oi@loja.com.br')).toEqual([
+      'ncontato@zee-dog.com',
+      'oi@loja.com.br',
+    ]);
+  });
+
+  it('separa e-mail genérico de e-mail de pessoa', () => {
+    expect(classifyEmailType('contato@clinica.com.br')).toBe('generico');
+    expect(classifyEmailType('fale.conosco@clinica.com.br')).toBe('generico');
+    expect(classifyEmailType('joao.silva@clinica.com.br')).toBe('pessoal');
+    expect(classifyEmailType('clinicasorriso@gmail.com')).toBe('generico');
   });
 });

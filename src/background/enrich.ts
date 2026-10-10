@@ -24,6 +24,8 @@ export interface EnrichOptions {
   /** Espera a vez do domínio (RF2.6). Injetável nos testes. */
   waitTurn?: (domain: string) => Promise<void>;
   timeoutMs?: number;
+  /** Espera entre tentativas após 429/503. Injetável nos testes. */
+  sleepImpl?: (ms: number) => Promise<void>;
 }
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
@@ -59,6 +61,12 @@ async function fetchHtml(
     await options.waitTurn(domain);
     try {
       const response = await fetchOnce(url, options.fetchImpl, options.timeoutMs);
+      if ((response.status === 429 || response.status === 503) && attempt === 0) {
+        // o site pediu para esperar: respeita Retry-After (máx. 10 s) e tenta uma vez mais
+        const seconds = Number(response.headers.get('retry-after'));
+        await options.sleepImpl(Math.min(Number.isFinite(seconds) && seconds > 0 ? seconds : 2, 10) * 1000);
+        continue;
+      }
       if (!response.ok) return null;
       const type = response.headers.get('content-type') ?? '';
       if (type && !/html|xml|text/i.test(type)) return null;
@@ -80,6 +88,7 @@ export async function enrichSite(siteUrl: string, overrides: EnrichOptions = {})
     fetchImpl: overrides.fetchImpl ?? fetch,
     waitTurn: overrides.waitTurn ?? waitDomainTurn,
     timeoutMs: overrides.timeoutMs ?? REQUEST_TIMEOUT_MS,
+    sleepImpl: overrides.sleepImpl ?? sleep,
   };
 
   const home = await fetchHtml(siteUrl, options);

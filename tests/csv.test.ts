@@ -10,6 +10,8 @@ import {
 import { deriveFields } from '../src/shared/dedupe';
 import type { Lead } from '../src/shared/types';
 
+const LINE_BREAK = String.fromCharCode(13, 10);
+
 function makeLead(overrides: Partial<Lead> = {}): Lead {
   return deriveFields({
     id: '1',
@@ -58,7 +60,7 @@ describe('leadsToCsv', () => {
     expect(header).toBe(CSV_HEADERS.join(';'));
     expect(row).toBe(
       'Clínica Sorriso;Dentista;(12) 3631-0000;não;;contato@clinicasorriso.com.br;https://clinicasorriso.com.br;' +
-        'Rua Exemplo 100, Taubaté, SP;4,8;132;;;clínica odontológica em Taubaté;https://maps.google.com/?cid=000;2026-10-09 22:50',
+        'Rua Exemplo 100, Taubaté, SP;4,8;132;;;clínica odontológica em Taubaté;https://maps.google.com/?cid=000;2026-10-09 22:50;genérico',
     );
   });
 
@@ -129,5 +131,23 @@ describe('colunas Site e WhatsApp', () => {
     expect(escapeCell('\t=cmd')).toBe("'\t=cmd");
     expect(escapeCell('+Bem Estar')).toBe("'+Bem Estar");
     expect(escapeCell('+55 (12) 99168-9416, +55 (11) 93064-1548')).toBe('+55 (12) 99168-9416, +55 (11) 93064-1548');
+  });
+});
+
+describe('e-mails e LGPD no CSV', () => {
+  const leads = [makeLead({ emails: ['joao.silva@clinica.com.br', 'contato@clinica.com.br'] })];
+
+  it('preenche a coluna Tipo de e-mail na ordem dos e-mails', () => {
+    const cells = leadsToCsv(leads).split(LINE_BREAK)[1].split(';');
+    expect(cells[CSV_HEADERS.indexOf('Tipo de e-mail')]).toBe('pessoal, genérico');
+  });
+
+  it('exporta só e-mails genéricos sem descartar o lead', () => {
+    const [lead] = selectLeadsForExport(leads, {
+      scope: 'all',
+      discardWithoutContact: false,
+      genericEmailsOnly: true,
+    });
+    expect(lead.emails).toEqual(['contato@clinica.com.br']);
   });
 });

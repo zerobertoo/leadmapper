@@ -46,4 +46,29 @@ describe('enrichSite', () => {
     const result = await enrichSite('https://clinica.com.br/', { fetchImpl, waitTurn: noWait });
     expect(result).toEqual({ emails: [], whatsapp: [], redes_sociais: [], status: 'erro' });
   });
+
+  it('espera o Retry-After e tenta de novo após 429', async () => {
+    const waits: number[] = [];
+    let calls = 0;
+    const fetchImpl = (async (url: string) => {
+      calls++;
+      if (calls === 1) return new Response('', { status: 429, headers: { 'retry-after': '2' } });
+      return htmlResponse('oi@clinica.com.br', url);
+    }) as typeof fetch;
+
+    const result = await enrichSite('https://clinica.com.br/', {
+      fetchImpl,
+      waitTurn: noWait,
+      sleepImpl: async (ms) => void waits.push(ms),
+    });
+    expect(waits).toEqual([2000]);
+    expect(result.emails).toEqual(['oi@clinica.com.br']);
+  });
+
+  it('descarta e-mail de outro domínio, como o da agência', async () => {
+    const fetchImpl = (async (url: string) =>
+      htmlResponse('oi@clinica.com.br <a href="mailto:suporte@agencia.com.br">agência</a>', url)) as typeof fetch;
+    const result = await enrichSite('https://clinica.com.br/', { fetchImpl, waitTurn: noWait });
+    expect(result.emails).toEqual(['oi@clinica.com.br']);
+  });
 });

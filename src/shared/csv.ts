@@ -1,4 +1,5 @@
 import { isNonWebsite } from './domain';
+import { classifyEmailType } from './extract';
 import { parseBrazilianPhone } from './phone';
 import type { Lead } from './types';
 
@@ -9,6 +10,8 @@ const LINE_BREAK = '\r\n';
 export const CSV_HEADERS = [
   'Nome', 'Categoria', 'Telefone', 'Celular', 'WhatsApp', 'E-mail', 'Site', 'Endereço',
   'Nota', 'Avaliações', 'Instagram', 'Facebook', 'Busca de origem', 'Link do Maps', 'Data da coleta',
+  // colunas novas entram sempre no fim, para não quebrar planilhas existentes
+  'Tipo de e-mail',
 ];
 
 // números como +55 (12) 99123-4567 ou (12) 3631-0000, com ou sem vírgula, não são fórmula
@@ -73,6 +76,7 @@ function toRow(lead: Lead): string[] {
     lead.busca_origem,
     lead.url_maps,
     formatCollectedAt(lead.coletado_em),
+    lead.emails.map((email) => (classifyEmailType(email) === 'generico' ? 'genérico' : 'pessoal')).join(', '),
   ];
 }
 
@@ -92,6 +96,8 @@ export interface ExportOptions {
   /** `current` exporta só os leads da busca mais recente (RF5.4). */
   scope: 'all' | 'current';
   discardWithoutContact: boolean;
+  /** Remove e-mails de aparência pessoal da exportação (LGPD); o lead continua. */
+  genericEmailsOnly?: boolean;
 }
 
 /** Aplica as opções de exportação do popup (RF3.5 e RF5.4). */
@@ -100,6 +106,12 @@ export function selectLeadsForExport(leads: Lead[], options: ExportOptions): Lea
   if (options.scope === 'current' && leads.length > 0) {
     const latest = leads.reduce((a, b) => (b.coletado_em > a.coletado_em ? b : a));
     selected = leads.filter((lead) => lead.busca_origem === latest.busca_origem);
+  }
+  if (options.genericEmailsOnly) {
+    selected = selected.map((lead) => ({
+      ...lead,
+      emails: lead.emails.filter((email) => classifyEmailType(email) === 'generico'),
+    }));
   }
   return options.discardWithoutContact ? selected.filter(hasContact) : selected;
 }
