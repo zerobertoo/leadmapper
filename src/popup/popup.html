@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LeadMapper</title>
+    <link rel="stylesheet" href="./popup.css" />
+  </head>
+  <body>
+    <h1>LeadMapper</h1>
+    <p id="status" role="status">Carregando…</p>
+    <div class="actions">
+      <button id="start" type="button" disabled>Iniciar coleta</button>
+      <button id="pause" type="button" hidden>Pausar</button>
+      <button id="resume" type="button" hidden>Retomar</button>
+      <button id="cancel" type="button" hidden>Cancelar</button>
+    </div>
+    <script type="module" src="./popup.ts"></script>
+  </body>
+</html>
