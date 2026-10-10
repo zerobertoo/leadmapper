@@ -3,6 +3,8 @@ import { appendLog } from '../shared/diagnostic';
 import { extractDomain, isNonWebsite } from '../shared/domain';
 import {
   clearAll,
+  deleteLeads,
+  editLeads,
   patchLead,
   readLeads,
   readState,
@@ -190,6 +192,15 @@ async function handlePopupMessage(message: PopupMessage): Promise<StatusReply> {
     await chrome.alarms.clear(WATCHDOG_ALARM);
     await updateBadge('idle');
     return { kind: 'ready', state: 'idle', hasResults: false };
+  }
+
+  if (message.type === 'UPDATE_LEADS' || message.type === 'DELETE_LEADS') {
+    // edição vinda do painel lateral: entra na mesma fila de gravações do service worker
+    writeChain = writeChain.then(() =>
+      message.type === 'UPDATE_LEADS' ? editLeads(message.ids, message.edit) : deleteLeads(message.ids),
+    );
+    await writeChain;
+    return { kind: 'ready', state: await readState(), hasResults: false };
   }
 
   try {

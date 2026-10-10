@@ -149,6 +149,19 @@ describe('service worker', () => {
     }, { timeout: 10_000 });
   }, 15_000);
 
+  it('edita status e tags e remove leads pelo service worker', async () => {
+    const [a, b] = [makeLead({ nome: 'A' }), makeLead({ nome: 'B', url_maps: 'https://maps/b' })];
+    const { store, send } = installChrome({ leads: [a, b] });
+    await import('../src/background/index');
+
+    await send({ type: 'UPDATE_LEADS', ids: [a.id], edit: { status_contato: 'contatado', tags: [' vip ', 'vip', ''] } });
+    expect((store.leads as Lead[])[0]).toMatchObject({ status_contato: 'contatado', tags: ['vip'] });
+    expect((store.leads as Lead[])[1].status_contato).toBeUndefined();
+
+    await send({ type: 'DELETE_LEADS', ids: [a.id] });
+    expect((store.leads as Lead[]).map((lead) => lead.nome)).toEqual(['B']);
+  });
+
   it('responde com erro, em vez de ficar mudo, quando o handler falha', async () => {
     const { send } = installChrome();
     vi.stubGlobal('chrome', {
