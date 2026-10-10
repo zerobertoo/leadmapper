@@ -35,6 +35,21 @@ Aplicadas depois da revisão; testes 114 passam (eram 93), typecheck, lint (sem 
 
 Perguntas 1 a 8 continuam abertas; as correções acima não decidem nenhuma delas.
 
+### Validação no Maps real (2026-10-10, Chrome, busca "veterinário em Santos")
+
+Feita lendo o DOM da página com o navegador, sem a extensão carregada (não dá para instalar uma extensão descompactada por aqui).
+
+| Item | Resultado |
+| --- | --- |
+| URL do Maps após o clique traz `!1s0x…:0x…` e coincide com o do cartão | Confirmado (cartão e URL com o mesmo id). A URL atualiza em 300 a 700 ms; o nome do painel às vezes muda antes do id, então exigir os dois (`isPanelForCard`) é correto. |
+| Cliques seguidos com `scrollIntoView` | Funcionam (4 de 4). Sem `scrollIntoView`, 2 de 4 cliques não navegaram: manter o `scrollIntoView` em `collectCard`. |
+| Seletores de endereço, telefone, site, categoria e nota (`div.F7nice` = "4,8(178)") | Confirmados. |
+| Seletor de horário | **Defeito encontrado e corrigido**: `[aria-label*="orário" i]` casava o ícone e gravava o texto "Horário de funcionamento". O resumo real está no `div[role="button"][aria-expanded]` que contém o ícone ("Aberto 24 horas"). |
+| `#searchboxinput` | Não existe mais; o campo é `input[name="q"]`. O fallback pela URL cobria, e o seletor novo foi acrescentado. |
+| `span.HlvSq` (fim da lista) | **Não confirmado**: 110 cartões em 10 rolagens sem chegar ao fim; as 3 rolagens ociosas continuam sendo o plano B. |
+| Falso positivo de `detectBlock` (recaptcha) | Não ocorreu na página normal. |
+| Mesmo id de lugar em dois cartões | Visto (109 ids em 110 cartões): `listCards` dedupe por `href`; a fusão por telefone/endereço cobre. |
+
 ## 1. Resumo e resultado das verificações
 
 O núcleo está sólido: confirmação do painel por id, gravação por lead, escape de CSV, dedupe por endereço, filtro de e-mail por domínio e painel lateral sem `innerHTML`. Não há P0. Há dois P1: **uma única gravação que falha derruba todas as seguintes até o service worker reiniciar** (inclusive depois de "Limpar lista") e **o painel lateral remove/altera leads que estão selecionados mas escondidos pelo filtro**. Os P2 se concentram em perda silenciosa de e-mails (janela de crédito, TLDs, `hotmail.com.br`), em um regex de e-mail de custo quadrático que pode congelar o service worker, e em dedupe por substring. Os testes cobrem bem os módulos puros e quase nada do ciclo de vida (falha de gravação, corrida com CLEAR, painel lateral, popup, laço de coleta).
