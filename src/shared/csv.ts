@@ -1,7 +1,7 @@
 import { isNonWebsite } from './domain';
 import { classifyEmailType } from './extract';
 import { parseBrazilianPhone } from './phone';
-import type { Lead } from './types';
+import { CONTACT_STATUS_LABELS, type Lead } from './types';
 
 const BOM = '﻿';
 const SEPARATOR = ';';
@@ -12,6 +12,10 @@ export const CSV_HEADERS = [
   'Nota', 'Avaliações', 'Instagram', 'Facebook', 'Busca de origem', 'Link do Maps', 'Data da coleta',
   // colunas novas entram sempre no fim, para não quebrar planilhas existentes
   'Tipo de e-mail',
+  'Status',
+  'Tags',
+  'Horário',
+  'Outras redes',
 ];
 
 // números como +55 (12) 99123-4567 ou (12) 3631-0000, com ou sem vírgula, não são fórmula
@@ -39,10 +43,10 @@ export function formatCollectedAt(iso: string): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
-/** `leads_AAAA-MM-DD_HHMM.csv` */
-export function exportFileName(date: Date): string {
+/** `leads_AAAA-MM-DD_HHMM.csv` (ou outra extensão, para JSON e vCard). */
+export function exportFileName(date: Date, extension = 'csv'): string {
   const day = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
-  return `leads_${day}_${pad(date.getHours())}${pad(date.getMinutes())}.csv`;
+  return `leads_${day}_${pad(date.getHours())}${pad(date.getMinutes())}.${extension}`;
 }
 
 // "+55 (12) 99168-9416": com parênteses e espaços o Excel mantém como texto
@@ -77,6 +81,12 @@ function toRow(lead: Lead): string[] {
     lead.url_maps,
     formatCollectedAt(lead.coletado_em),
     lead.emails.map((email) => (classifyEmailType(email) === 'generico' ? 'genérico' : 'pessoal')).join(', '),
+    CONTACT_STATUS_LABELS[lead.status_contato ?? 'novo'],
+    (lead.tags ?? []).join(', '),
+    lead.horario ?? '',
+    lead.redes_sociais
+      .filter((url) => !/instagram\.com|facebook\.com/i.test(url))
+      .join(', '),
   ];
 }
 

@@ -108,9 +108,20 @@ const NOT_A_PROFILE = new Set([
   'privacy', 'help', 'about', 'accounts', 'stories', 'tv',
 ]);
 
-/** Primeiro perfil de Instagram e de Facebook encontrado na página. */
+// redes extras: só perfis de empresa ou de canal, nunca de pessoa (LinkedIn /in/)
+const EXTRA_SOCIAL: [string, RegExp, (handle: string) => string][] = [
+  ['linkedin', /https?:\/\/(?:[a-z]{2,3}\.)?linkedin\.com\/company\/([a-z0-9_.%-]+)/gi, (h) => `https://www.linkedin.com/company/${h}`],
+  ['youtube', /https?:\/\/(?:www\.)?youtube\.com\/(@[a-z0-9_.-]+|channel\/[a-z0-9_-]+|c\/[a-z0-9_.-]+|user\/[a-z0-9_.-]+)/gi, (h) => `https://www.youtube.com/${h}`],
+  ['tiktok', /https?:\/\/(?:www\.)?tiktok\.com\/(@[a-z0-9_.]+)/gi, (h) => `https://www.tiktok.com/${h}`],
+];
+
+/** Primeiro perfil de cada rede (Instagram, Facebook, LinkedIn da empresa, YouTube, TikTok). */
 export function extractSocialProfiles(html: string): string[] {
   const found = new Map<string, string>();
+  for (const [network, pattern, toUrl] of EXTRA_SOCIAL) {
+    const match = html.matchAll(pattern).next().value;
+    if (match) found.set(network, toUrl(match[1].replace(/[.]+$/, '')));
+  }
   for (const match of html.matchAll(SOCIAL_PATTERN)) {
     const network = match[1].toLowerCase();
     const handle = match[2].replace(/\.+$/, '');

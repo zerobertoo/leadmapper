@@ -50,11 +50,40 @@ export interface Lead {
   busca_origem: string;
   coletado_em: string;
   status_enriquecimento: EnrichmentStatus;
+  /** Horário de funcionamento exibido no Maps, em uma linha (melhor esforço). */
+  horario?: string;
+  /** Ausente equivale a `novo`. */
+  status_contato?: ContactStatus;
+  tags?: string[];
   /** De onde veio cada dado e quando (RF4.2), para pedidos de titulares. */
   fontes?: Partial<Record<SourcedField, FieldSource>>;
 }
 
-export type SourcedField = 'categoria' | 'endereco' | 'telefone' | 'site' | 'emails' | 'whatsapp' | 'redes_sociais';
+export type SourcedField =
+  | 'categoria'
+  | 'endereco'
+  | 'telefone'
+  | 'site'
+  | 'horario'
+  | 'emails'
+  | 'whatsapp'
+  | 'redes_sociais';
+
+/** Etapa do contato comercial com o lead, editada na lista do painel lateral. */
+export type ContactStatus = 'novo' | 'contatado' | 'sem_interesse' | 'cliente';
+
+export const CONTACT_STATUS_LABELS: Record<ContactStatus, string> = {
+  novo: 'Novo',
+  contatado: 'Contatado',
+  sem_interesse: 'Sem interesse',
+  cliente: 'Cliente',
+};
+
+/** Campos do lead que o usuário edita (status e tags). */
+export interface LeadEdit {
+  status_contato?: ContactStatus;
+  tags?: string[];
+}
 
 export interface FieldSource {
   origem: 'maps' | 'site';
@@ -91,7 +120,10 @@ export type PopupMessage =
   | { type: 'START'; settings?: Partial<CollectionSettings> }
   | { type: Exclude<CollectionCommand, 'START'> }
   // apaga leads e contadores, inclusive o buffer do service worker
-  | { type: 'CLEAR' };
+  | { type: 'CLEAR' }
+  // edição pela lista do painel lateral; passa pelo service worker para serializar a gravação
+  | { type: 'UPDATE_LEADS'; ids: string[]; edit: LeadEdit }
+  | { type: 'DELETE_LEADS'; ids: string[] };
 
 /** Eventos enviados pelo content script ao service worker. */
 export type ContentEvent =

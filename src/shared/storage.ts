@@ -4,6 +4,7 @@ import {
   STORAGE_KEYS,
   type CollectionState,
   type Lead,
+  type LeadEdit,
   type Progress,
 } from './types';
 
@@ -92,4 +93,35 @@ export async function readProgress(): Promise<Progress> {
 
 export function writeProgress(progress: Progress): Promise<void> {
   return chrome.storage.local.set({ [STORAGE_KEYS.progress]: progress });
+}
+
+const MAX_TAGS = 20;
+const MAX_TAG_LENGTH = 30;
+
+/** Tags sem espaços sobrando, sem repetição e dentro dos limites. */
+export function normalizeTags(tags: string[]): string[] {
+  const cleaned = tags.map((tag) => tag.trim().slice(0, MAX_TAG_LENGTH)).filter(Boolean);
+  return [...new Set(cleaned)].slice(0, MAX_TAGS);
+}
+
+/** Aplica status e/ou tags aos leads indicados. Quem chama deve serializar. */
+export async function editLeads(ids: string[], edit: LeadEdit): Promise<void> {
+  const wanted = new Set(ids);
+  const leads = (await readLeads()).map((lead) =>
+    wanted.has(lead.id)
+      ? {
+          ...lead,
+          ...(edit.status_contato && { status_contato: edit.status_contato }),
+          ...(edit.tags && { tags: normalizeTags(edit.tags) }),
+        }
+      : lead,
+  );
+  await chrome.storage.local.set({ [STORAGE_KEYS.leads]: leads });
+}
+
+/** Remove leads pelo id. Quem chama deve serializar. */
+export async function deleteLeads(ids: string[]): Promise<void> {
+  const unwanted = new Set(ids);
+  const leads = (await readLeads()).filter((lead) => !unwanted.has(lead.id));
+  await chrome.storage.local.set({ [STORAGE_KEYS.leads]: leads });
 }

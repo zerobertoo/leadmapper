@@ -129,3 +129,18 @@ describe('validação de e-mail e tipo', () => {
     expect(classifyEmailType('clinicasorriso@gmail.com')).toBe('generico');
   });
 });
+
+describe('redes extras', () => {
+  it('pega LinkedIn de empresa, YouTube e TikTok, mas não perfil pessoal do LinkedIn', () => {
+    const html =
+      '<a href="https://www.linkedin.com/company/clinica-sorriso/">in</a>' +
+      '<a href="https://www.linkedin.com/in/joao-silva">pessoa</a>' +
+      '<a href="https://www.youtube.com/@clinicasorriso">yt</a>' +
+      '<a href="https://www.tiktok.com/@clinicasorriso">tt</a>';
+    expect(extractSocialProfiles(html)).toEqual([
+      'https://www.linkedin.com/company/clinica-sorriso',
+      'https://www.youtube.com/@clinicasorriso',
+      'https://www.tiktok.com/@clinicasorriso',
+    ]);
+  });
+});

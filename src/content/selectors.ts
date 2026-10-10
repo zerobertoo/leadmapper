@@ -24,6 +24,8 @@ export const SELECTORS = {
   phone: ['button[data-item-id^="phone"]'],
   website: ['a[data-item-id="authority"]'],
   category: ['button[jsaction*="category"]', '[jsaction*="category"]'],
+  // horário de funcionamento; validar no DOM real (o texto vem do aria-label ou do bloco)
+  hours: ['[data-item-id="oh"]', '[aria-label*="orário" i]', '[aria-label*="hours" i]'],
   // bloco com nota e total de avaliações (ex.: "5,0 (14)"); a classe é ofuscada.
   // validar: o fallback usa o aria-label do ícone de estrelas (ex.: "5,0 estrelas 14 avaliações")
   ratingBlock: ['div.F7nice', '[role="img"][aria-label*="estrela" i]', '[role="img"][aria-label*="star" i]'],

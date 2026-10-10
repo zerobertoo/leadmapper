@@ -111,6 +111,7 @@ export function extractLead(panel: HTMLElement, card: ResultCard, searchQuery: s
   const categoria = textOf(panel, SELECTORS.category);
   const endereco = textOf(panel, SELECTORS.address);
   const telefone = textOf(panel, SELECTORS.phone);
+  const horario = textOf(panel, SELECTORS.hours).slice(0, MAX_HOURS_LENGTH);
   const fromMaps = { origem: 'maps', em: collectedAt } as const;
   return {
     id: crypto.randomUUID(),
@@ -131,11 +132,13 @@ export function extractLead(panel: HTMLElement, card: ResultCard, searchQuery: s
     busca_origem: searchQuery,
     coletado_em: collectedAt,
     status_enriquecimento: site ? 'pendente' : 'sem_site',
+    ...(horario && { horario }),
     fontes: {
       ...(categoria && { categoria: fromMaps }),
       ...(endereco && { endereco: fromMaps }),
       ...(telefone && { telefone: fromMaps }),
       ...(site && { site: fromMaps }),
+      ...(horario && { horario: fromMaps }),
     },
   };
 }
@@ -148,6 +151,8 @@ export function detectBlock(root: ParentNode, url: string): boolean {
   if (/\/sorry\/|consent\.google\./i.test(url)) return true;
   return root.querySelector('iframe[src*="recaptcha"], form[action*="/sorry/"]') !== null;
 }
+
+const MAX_HOURS_LENGTH = 300;
 
 /** Campos que, vazios em quase todos os itens, indicam seletor quebrado. */
 const WATCHED_FIELDS = [

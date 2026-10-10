@@ -60,7 +60,7 @@ describe('leadsToCsv', () => {
     expect(header).toBe(CSV_HEADERS.join(';'));
     expect(row).toBe(
       'Clínica Sorriso;Dentista;(12) 3631-0000;não;;contato@clinicasorriso.com.br;https://clinicasorriso.com.br;' +
-        'Rua Exemplo 100, Taubaté, SP;4,8;132;;;clínica odontológica em Taubaté;https://maps.google.com/?cid=000;2026-10-09 22:50;genérico',
+        'Rua Exemplo 100, Taubaté, SP;4,8;132;;;clínica odontológica em Taubaté;https://maps.google.com/?cid=000;2026-10-09 22:50;genérico;Novo;;;',
     );
   });
 
