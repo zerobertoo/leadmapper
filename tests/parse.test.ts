@@ -88,7 +88,6 @@ describe('isPanelForCard', () => {
   const drogariaB = 'https://www.google.com/maps/place/Drogaria+Pacheco/data=!4m7!3m6!1s0x94cc2:0xbbb!8m2';
   const base: PanelCheck = {
     shownName: 'Drogaria Pacheco',
-    expectedName: 'Drogaria Pacheco',
     previousName: 'Drogaria Pacheco',
     signature: 'Rua A, 10|(12) 3000-0001',
     previousSignature: 'Rua A, 10|(12) 3000-0001',

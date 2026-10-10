@@ -29,6 +29,8 @@ const DETAILS_TIMEOUT_MS = 8000;
 const POLL_INTERVAL_MS = 200;
 const MAX_IDLE_SCROLLS = 3;
 const NEW_CARDS_WAIT_MS = 5000;
+// falhas seguidas indicam seletor quebrado: para cedo em vez de gastar 16 s por cartão até o fim da lista
+const MAX_CONSECUTIVE_FAILURES = 5;
 const BLOCKED_MESSAGE =
   'O Google pediu uma verificação. Resolva-a na aba do Maps e inicie a coleta de novo.';
 const MAPS_CHANGED_MESSAGE =
@@ -88,7 +90,14 @@ function readSearchQuery(): string {
   const input = queryFirst<HTMLInputElement>(document, SELECTORS.searchInput);
   if (input?.value.trim()) return input.value.trim();
   const match = location.pathname.match(/\/maps\/search\/([^/]+)/);
-  return match ? decodeURIComponent(match[1].replace(/\+/g, ' ')) : '';
+  if (!match) return '';
+  const raw = match[1].replace(/\+/g, ' ');
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    // "%" solto na URL: usa o texto como veio em vez de travar a coleta
+    return raw;
+  }
 }
 
 // empresas já salvas em coletas anteriores, para retomar sem repetir visitas
@@ -144,7 +153,6 @@ async function waitForDetails(card: ResultCard, previous: PreviousPanel): Promis
       panel &&
       isPanelForCard({
         shownName: normalizeText(panel.getAttribute('aria-label')),
-        expectedName: card.name,
         previousName: previous.name,
         signature: panelSignature(panel),
         previousSignature: previous.signature,
@@ -195,6 +203,7 @@ async function runCollection(settings: CollectionSettings): Promise<void> {
   const searchQuery = readSearchQuery();
   let previous: PreviousPanel = { name: '', signature: '', url: location.href };
   let errorMessage = '';
+  let consecutiveFailures = 0;
   const collected: Lead[] = [];
   const warned = new Set<string>();
 
@@ -230,6 +239,7 @@ async function runCollection(settings: CollectionSettings): Promise<void> {
         const result = await collectCard(card, previous, searchQuery);
         previous = result.panel;
         const { lead } = result;
+        consecutiveFailures = 0;
         if (lead.telefone) progress.withPhone++;
         sendEvent({ type: 'LEAD_FOUND', lead });
         // campo vazio em quase todos os itens: seletor provavelmente quebrado
@@ -245,9 +255,15 @@ async function runCollection(settings: CollectionSettings): Promise<void> {
         console.warn('[LeadMapper] falha ao coletar item:', card.name, error);
         sendEvent({ type: 'LOG', text: `Falha em "${card.name}": ${error instanceof Error ? error.message : String(error)}` });
         progress.failures++;
+        consecutiveFailures++;
       }
       progress.processed++;
       sendEvent({ type: 'PROGRESS', progress: { ...progress } });
+      if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+        errorMessage = MAPS_CHANGED_MESSAGE;
+        sendEvent({ type: 'LOG', text: `${consecutiveFailures} falhas seguidas; coleta interrompida` });
+        break;
+      }
       await randomDelay(settings.speed);
     }
 

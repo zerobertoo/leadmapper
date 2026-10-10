@@ -70,7 +70,6 @@ export function panelSignature(panel: HTMLElement): string {
 
 export interface PanelCheck {
   shownName: string;
-  expectedName: string;
   previousName: string;
   signature: string;
   previousSignature: string;
