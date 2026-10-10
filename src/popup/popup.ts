@@ -1,4 +1,4 @@
-import { exportFileName, leadsToCsv, selectLeadsForExport } from '../shared/csv';
+import { exportFileName, hasContact, leadsToCsv, selectLeadsForExport } from '../shared/csv';
 import { clearAll, readDuplicates, readLeads, readProgress } from '../shared/storage';
 import {
   DEFAULT_OPTIONS,
@@ -174,6 +174,8 @@ async function renderCounters(): Promise<void> {
   document.querySelector('#count-sites')!.textContent = `${visited}/${withSite.length}`;
   document.querySelector('#count-failures')!.textContent = String(progress.failures + siteErrors);
   totalElement.textContent = `Leads salvos: ${leads.length}`;
+  const withoutContact = leads.filter((lead) => !hasContact(lead)).length;
+  document.querySelector('#no-contact-count')!.textContent = `(${withoutContact} na lista)`;
 }
 
 async function exportCsv(): Promise<void> {
