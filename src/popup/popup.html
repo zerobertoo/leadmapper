@@ -9,6 +9,13 @@
   <body>
     <h1>LeadMapper</h1>
     <p id="status" role="status">Carregando…</p>
+    <dl id="counters" class="counters" hidden>
+      <div><dt>Encontrados</dt><dd id="count-found">0</dd></div>
+      <div><dt>Processados</dt><dd id="count-processed">0</dd></div>
+      <div><dt>Com telefone</dt><dd id="count-phone">0</dd></div>
+      <div><dt>Erros</dt><dd id="count-failures">0</dd></div>
+    </dl>
+    <p id="total" class="total"></p>
     <div class="actions">
       <button id="start" type="button" disabled>Iniciar coleta</button>
       <button id="pause" type="button" hidden>Pausar</button>
