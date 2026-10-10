@@ -81,7 +81,7 @@ Extensão de navegador (Chrome, Manifest V3) que transforma uma busca no Google 
 
 **RF4. Armazenamento**
 
-- RF4.1: persistir tudo em `chrome.storage.local` (com a permissão `unlimitedStorage`), salvando em lotes a cada 10 registros para suportar retomada.
+- RF4.1: persistir tudo em `chrome.storage.local` (com a permissão `unlimitedStorage`), salvando cada registro assim que é coletado, para suportar retomada sem perda (decisão de 2026-10-10; antes, lotes de 10).
 - RF4.2: guardar para cada lead a busca de origem, a data da coleta e a fonte de cada dado (Maps ou site).
 - RF4.3: botão para limpar toda a lista, com confirmação.
 
@@ -104,7 +104,7 @@ Extensão de navegador (Chrome, Manifest V3) que transforma uma busca no Google 
 
 **Permissões do manifest**
 
-- `permissions`: `storage`, `unlimitedStorage`, `downloads`, `activeTab`, `scripting`.
+- `permissions`: `storage`, `unlimitedStorage`, `alarms`, `scripting` (`downloads` e `activeTab` foram removidas por não terem uso).
 - `host_permissions`: `https://www.google.com/maps/*` e `https://*/*` (necessário para o `fetch` aos sites das empresas sem bloqueio de CORS).
 - Justificar cada permissão no README, já pensando em uma futura publicação.
 

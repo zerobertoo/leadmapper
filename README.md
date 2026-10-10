@@ -59,7 +59,7 @@ Se a aba ou o navegador fechou no meio, os leads já salvos continuam na lista. 
 
 ### O CSV
 
-UTF-8 com BOM, separador `;`, cabeçalho em português, pronto para o Excel e para o Google Sheets. Colunas: Nome, Categoria, Telefone, Celular, WhatsApp, E-mail, Site, Endereço, Nota, Avaliações, Instagram, Facebook, Busca de origem, Link do Maps, Data da coleta. Telefones e WhatsApp saem normalizados (`+55DDDNÚMERO` internamente; legível no CSV).
+UTF-8 com BOM, separador `;`, cabeçalho em português, pronto para o Excel e para o Google Sheets. Colunas: Nome, Categoria, Telefone, Celular, WhatsApp, E-mail, Site, Endereço, Nota, Avaliações, Instagram, Facebook, Busca de origem, Link do Maps, Data da coleta. Telefones e WhatsApp saem normalizados (`+55DDDNÚMERO` internamente; no CSV, `+55 (12) 99168-9416`). A coluna Site fica vazia quando o site do Maps é uma rede social ou um link de WhatsApp. E-mails de outro domínio (agência, modelo de formulário) são descartados; ficam os do domínio da empresa e de provedores pessoais (Gmail, Hotmail etc.).
 
 ## Limitações
 
@@ -77,12 +77,11 @@ UTF-8 com BOM, separador `;`, cabeçalho em português, pronto para o Excel e pa
 | --- | --- |
 | `storage` e `unlimitedStorage` | Guardar a lista de leads, o progresso e as opções no navegador, em lotes, para permitir retomada. Listas grandes podem passar da cota padrão. |
 | `scripting` | Injetar o script de coleta na aba do Maps que já estava aberta antes da extensão ser instalada ou recarregada. |
-| `activeTab` | Reservada para o acesso à aba ativa a partir do popup. Hoje o acesso à aba do Maps já vem das permissões de host. |
-| `downloads` | Reservada para exportação. A v1 baixa o CSV por um link `blob` criado no popup. |
+| `alarms` | Acordar o service worker a cada minuto **só enquanto há sites a visitar**, para retomar a fila se ele tiver sido encerrado com o popup fechado. |
 | `https://www.google.com/maps/*` e `https://www.google.com.br/maps/*` | Rodar o script de coleta nas páginas do Maps. |
 | `https://*/*` e `http://*/*` | Permitir que o service worker faça `fetch` aos sites das empresas sem bloqueio de CORS. Sem isso não há e-mail nem WhatsApp. Sites antigos ainda usam `http://`. |
 
-> Antes de uma eventual publicação na Chrome Web Store, vale remover `activeTab` e `downloads` (hoje sem uso) e reavaliar o `https://*/*`, que é uma permissão ampla.
+> `https://*/*` é uma permissão ampla. Antes de uma eventual publicação na Chrome Web Store, vale pedi-la como permissão opcional no clique de "Iniciar coleta" (ver `docs/melhorias.md`, S3).
 
 ## Privacidade
 
@@ -121,4 +120,4 @@ src/
 tests/                    testes unitários das funções puras
 ```
 
-Como o service worker do MV3 pode ser encerrado a qualquer momento, todo estado necessário para retomar fica em `chrome.storage.local`, e a fila de sites é reconstruída a partir dos leads com `status_enriquecimento: pendente`. Leads ainda no buffer de gravação (no máximo 9) podem se perder se o service worker for encerrado antes do próximo lote.
+Como o service worker do MV3 pode ser encerrado a qualquer momento, todo estado necessário para retomar fica em `chrome.storage.local`, e a fila de sites é reconstruída a partir dos leads com `status_enriquecimento: pendente`. Cada lead é gravado assim que é coletado; um alarme (`alarms`) retoma a fila de sites se o service worker for encerrado no meio do enriquecimento.
