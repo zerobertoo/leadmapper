@@ -34,6 +34,7 @@ h1 {
 
 .actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin-top: 12px;
 }
@@ -161,4 +162,121 @@ button:focus-visible {
 
 .warnings[hidden] {
   display: none;
+}
+
+main {
+  display: block;
+}
+
+/* alvo de toque mínimo de 24 px nos checkboxes (WCAG 2.5.8) */
+input[type='checkbox'] {
+  inline-size: 18px;
+  block-size: 18px;
+  margin: 0;
+  flex: none;
+}
+
+.notice {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.notice[hidden],
+#first-steps[hidden],
+#progress-block[hidden],
+details[hidden] {
+  display: none;
+}
+
+.notice p {
+  margin: 0 0 8px;
+}
+
+.steps {
+  margin: 8px 0 0;
+  padding-left: 20px;
+}
+
+progress {
+  display: block;
+  inline-size: 100%;
+  block-size: 10px;
+  accent-color: var(--accent);
+}
+
+.progress-text {
+  margin: 4px 0 0;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.counters {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.counters.small {
+  grid-template-columns: 1fr 1fr;
+}
+
+.counters.small dd {
+  font-size: 14px;
+}
+
+.more {
+  margin-top: 12px;
+  font-size: 12px;
+}
+
+.more summary {
+  cursor: pointer;
+}
+
+.diagnostic p {
+  margin: 8px 0;
+}
+
+dialog {
+  inline-size: min(320px, calc(100vw - 32px));
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+dialog::backdrop {
+  background: rgb(0 0 0 / 0.5);
+}
+
+dialog h2 {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+
+button.danger {
+  border-color: #d93025;
+  color: #d93025;
+}
+
+@media (prefers-color-scheme: dark) {
+  button.danger {
+    border-color: #f28b82;
+    color: #f28b82;
+  }
+}
+
+select:focus-visible,
+input:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    scroll-behavior: auto;
+  }
 }
