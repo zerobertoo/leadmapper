@@ -13,3 +13,18 @@ export function extractDomain(url: string): string {
 export function isSocialDomain(domain: string): boolean {
   return SOCIAL_DOMAINS.some((social) => domain === social || domain.endsWith(`.${social}`));
 }
+
+/**
+ * Identificador estável de uma empresa a partir do link do Maps: o par de ids
+ * `0x...:0x...`; na falta dele, o caminho sem parâmetros de rastreamento.
+ */
+export function placeKey(mapsUrl: string): string {
+  const id = mapsUrl.match(/!1s(0x[0-9a-f]+:0x[0-9a-f]+)/i);
+  if (id) return id[1].toLowerCase();
+  try {
+    const url = new URL(mapsUrl);
+    return url.origin + url.pathname;
+  } catch {
+    return mapsUrl;
+  }
+}
