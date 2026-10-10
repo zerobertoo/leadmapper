@@ -14,7 +14,8 @@ const FILE_EXTENSIONS = new Set([
 const BLOCKED_DOMAINS = [
   'example.com', 'example.org', 'email.com', 'domain.com', 'dominio.com', 'seudominio.com',
   'seudominio.com.br', 'meudominio.com', 'meudominio.com.br', 'yourdomain.com', 'test.com',
-  'teste.com', 'sentry.io', 'wixpress.com', 'wix.com', 'godaddy.com', 'squarespace.com',
+  'teste.com', 'exemplo.com', 'exemplo.com.br', 'exemplo.org', 'whatsapp.com', 'whatsapp.com.br',
+  'sentry.io', 'wixpress.com', 'wix.com', 'godaddy.com', 'squarespace.com',
   'shopify.com', 'wordpress.com', 'cloudflare.com', 'w3.org', 'schema.org',
 ];
 
@@ -41,7 +42,9 @@ function safeDecode(text: string): string {
 }
 
 /** E-mails de links `mailto:` e do texto da página, sem falsos positivos (RF2.2). */
-export function extractEmails(html: string): string[] {
+export function extractEmails(rawHtml: string): string[] {
+  // texto de scripts traz sequências literais como \n e >, que grudariam no começo do e-mail
+  const html = rawHtml.replace(/\\u[0-9a-f]{4}/gi, ' ').replace(/\\[nrt]/g, ' ');
   const candidates: string[] = [];
   for (const match of html.matchAll(MAILTO_PATTERN)) {
     candidates.push(...safeDecode(match[1]).split(/[,;]/));

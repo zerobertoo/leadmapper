@@ -24,6 +24,15 @@ describe('extractEmails', () => {
     expect(extractEmails(html)).toEqual(['real@clinica.com.br']);
   });
 
+  it('não gruda sequências de escape de scripts no começo do e-mail', () => {
+    const html = String.raw`{"text":"Fale\ncontato@zee-dog.com>comercial@zee-dog.com"}`;
+    expect(extractEmails(html)).toEqual(['contato@zee-dog.com', 'comercial@zee-dog.com']);
+  });
+
+  it('descarta e-mails de exemplo em português e do WhatsApp', () => {
+    expect(extractEmails('exemplo@exemplo.com mail@exemplo.com.br form-whats@whatsapp.com.br')).toEqual([]);
+  });
+
   it('retorna lista vazia quando não há e-mail', () => {
     expect(extractEmails('<html><body>sem contato</body></html>')).toEqual([]);
   });
