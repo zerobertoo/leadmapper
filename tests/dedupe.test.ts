@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dedupeKey, deriveFields, mergeIntoList, mergeLeads } from '../src/shared/dedupe';
+import { dedupeKey, deriveFields, mergeIntoList, mergeLeads, sameAddress } from '../src/shared/dedupe';
 import type { Lead } from '../src/shared/types';
 
 function makeLead(overrides: Partial<Lead> = {}): Lead {
@@ -60,7 +60,8 @@ describe('mergeLeads', () => {
     const poor = makeLead({ telefone: '(12) 3631-0000', categoria: 'Dentista' });
     const rich = makeLead({ telefone: '(12) 3631-0000', endereco: 'Rua A', site: 'https://a.com', nota: 4.8 });
     const merged = mergeLeads(poor, rich);
-    expect(merged.id).toBe(rich.id);
+    // o id do que já estava salvo permanece, mesmo que o outro seja mais completo
+    expect(merged.id).toBe(poor.id);
     expect(merged.categoria).toBe('Dentista');
     expect(merged.endereco).toBe('Rua A');
   });
@@ -121,5 +122,34 @@ describe('unidades diferentes com telefone ou domínio em comum', () => {
     const lead = makeLead({ site: 'https://wa.me/5512991689416' });
     expect(lead.whatsapp).toEqual(['+5512991689416']);
     expect(dedupeKey(lead)).not.toContain('dom:');
+  });
+});
+
+describe('revisão: endereços e unidades', () => {
+  it('número que é prefixo de outro não torna os endereços iguais', () => {
+    expect(sameAddress('Av. Paulista, 1', 'Av. Paulista, 150')).toBe(false);
+    expect(sameAddress('Rua A, 10', 'Rua A, 100 - Centro')).toBe(false);
+    expect(sameAddress('Rua A, 10', 'Rua A, 10 - Centro, Santos')).toBe(true);
+  });
+
+  it('funde a repetição de qualquer unidade, não só da última', () => {
+    const units = ['Rua A, 1', 'Rua B, 2', 'Rua C, 3'].map((endereco) =>
+      makeLead({ telefone: '(12) 3631-0000', endereco, url_maps: `https://maps/${endereco}` }),
+    );
+    const first = mergeIntoList([], units);
+    expect(first.leads).toHaveLength(3);
+
+    const again = mergeIntoList(first.leads, [makeLead({ telefone: '(12) 3631-0000', endereco: 'Rua A, 1' })]);
+    expect(again.leads).toHaveLength(3);
+    expect(again.duplicates).toBe(1);
+
+    const sameBatch = mergeIntoList([], [units[0], units[1], makeLead({ telefone: '(12) 3631-0000', endereco: 'Rua B, 2' })]);
+    expect(sameBatch.leads).toHaveLength(2);
+  });
+
+  it('a fusão mantém o id do lead que já estava salvo', () => {
+    const saved = makeLead({ telefone: '(12) 3631-0000', endereco: 'Rua A, 1' });
+    const richer = makeLead({ telefone: '(12) 3631-0000', endereco: 'Rua A, 1', categoria: 'Dentista', nota: 5, avaliacoes: 3 });
+    expect(mergeIntoList([saved], [richer]).leads[0].id).toBe(saved.id);
   });
 });

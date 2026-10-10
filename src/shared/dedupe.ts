@@ -75,7 +75,8 @@ const numbersOf = (text: string) => new Set(text.match(/\d+/g) ?? []);
 export function sameAddress(first: string, second: string): boolean {
   const a = normalizeText(first);
   const b = normalizeText(second);
-  if (!a || !b || a === b || a.includes(b) || b.includes(a)) return true;
+  // contido por palavras inteiras: "rua a 10" está em "rua a 10 centro", mas "av x 1" não está em "av x 150"
+  if (!a || !b || a === b || ` ${a} `.includes(` ${b} `) || ` ${b} `.includes(` ${a} `)) return true;
   const tokensA = new Set(a.split(' '));
   const tokensB = new Set(b.split(' '));
   const shared = [...tokensA].filter((token) => tokensB.has(token)).length;
@@ -89,7 +90,8 @@ export function sameAddress(first: string, second: string): boolean {
 /** Mantém o registro mais completo e preenche os campos vazios com o outro (RF3.3). */
 export function mergeLeads(first: Lead, second: Lead): Lead {
   const [base, other] = completeness(second) > completeness(first) ? [second, first] : [first, second];
-  const merged: Record<string, unknown> = { ...base };
+  // o id do primeiro (o que já estava salvo) permanece: seleção, status e patches em voo apontam para ele
+  const merged: Record<string, unknown> = { ...base, id: first.id };
   for (const [key, value] of Object.entries(other)) {
     if (!isFilled(merged[key]) && isFilled(value)) merged[key] = value;
   }
@@ -114,21 +116,24 @@ export function mergeIntoList(
   incoming: Lead[],
 ): { leads: Lead[]; duplicates: number } {
   const leads = [...existing];
-  const indexByKey = new Map(leads.map((lead, index) => [dedupeKey(lead), index]));
+  // uma chave pode ter várias unidades (mesmo telefone ou domínio, endereços diferentes)
+  const indexesByKey = new Map<string, number[]>();
+  const register = (key: string, index: number) => {
+    const known = indexesByKey.get(key);
+    if (known) known.push(index);
+    else indexesByKey.set(key, [index]);
+  };
+  for (const [index, lead] of leads.entries()) register(dedupeKey(lead), index);
   let duplicates = 0;
 
   for (const lead of incoming) {
     const key = dedupeKey(lead);
-    const index = indexByKey.get(key);
-    // mesmo telefone ou domínio, mas endereços diferentes: são unidades distintas
-    const distinctUnit = index !== undefined && !sameAddress(leads[index].endereco, lead.endereco);
-    if (distinctUnit) {
-      leads.push(lead);
-    } else if (index === undefined) {
-      indexByKey.set(key, leads.length);
+    const sameUnit = indexesByKey.get(key)?.find((index) => sameAddress(leads[index].endereco, lead.endereco));
+    if (sameUnit === undefined) {
+      register(key, leads.length);
       leads.push(lead);
     } else {
-      leads[index] = mergeLeads(leads[index], lead);
+      leads[sameUnit] = mergeLeads(leads[sameUnit], lead);
       duplicates++;
     }
   }
