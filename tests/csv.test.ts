@@ -105,3 +105,29 @@ describe('selectLeadsForExport', () => {
     expect(ids).toEqual(['old', 'recent']);
   });
 });
+
+describe('colunas Site e WhatsApp', () => {
+  const row = (lead: Lead) => leadsToCsv([lead]).split('\r\n')[1].split(';');
+
+  it('deixa o Site vazio quando é perfil de rede social e mantém o Instagram', () => {
+    const lead = makeLead({ site: 'https://www.instagram.com/clinicasorriso' });
+    const cells = row(lead);
+    expect(cells[CSV_HEADERS.indexOf('Site')]).toBe('');
+    expect(cells[CSV_HEADERS.indexOf('Instagram')]).toBe('https://www.instagram.com/clinicasorriso');
+  });
+
+  it('formata o WhatsApp como texto, sem apóstrofo, também com vários números', () => {
+    const lead = makeLead({ whatsapp: ['+5512991689416', '+5511930641548'] });
+    const cell = row(lead)[CSV_HEADERS.indexOf('WhatsApp')];
+    expect(cell).toBe('"+55 (12) 99168-9416, +55 (11) 93064-1548"'.replace(/"/g, ''));
+    expect(cell.startsWith("'")).toBe(false);
+  });
+
+  it('escapa fórmula mesmo com espaço antes, mas não telefones', () => {
+    expect(escapeCell(' =1+1')).toBe("' =1+1");
+    expect(escapeCell('+1+1')).toBe("'+1+1");
+    expect(escapeCell('\t=cmd')).toBe("'\t=cmd");
+    expect(escapeCell('+Bem Estar')).toBe("'+Bem Estar");
+    expect(escapeCell('+55 (12) 99168-9416, +55 (11) 93064-1548')).toBe('+55 (12) 99168-9416, +55 (11) 93064-1548');
+  });
+});

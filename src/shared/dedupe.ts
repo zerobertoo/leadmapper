@@ -1,4 +1,5 @@
-import { extractDomain, isSocialDomain } from './domain';
+import { extractDomain, isSocialDomain, isWhatsappDomain } from './domain';
+import { normalizeWhatsappNumber } from './extract';
 import { parseBrazilianPhone } from './phone';
 import type { Lead } from './types';
 
@@ -10,12 +11,20 @@ export function deriveFields(lead: Lead): Lead {
   if (lead.site && isSocialDomain(dominio) && !redesSociais.includes(lead.site)) {
     redesSociais.push(lead.site);
   }
+  // site do Maps que é link de WhatsApp: o número vira WhatsApp do lead
+  const whatsapp = [...lead.whatsapp];
+  if (lead.site && isWhatsappDomain(dominio)) {
+    const digits = lead.site.match(/(?:wa\.me\/|phone=)\+?(\d{8,15})/i)?.[1];
+    const number = digits ? normalizeWhatsappNumber(digits) : null;
+    if (number && !whatsapp.includes(number)) whatsapp.push(number);
+  }
   return {
     ...lead,
     telefone_e164: phone?.e164 ?? '',
     eh_celular: phone?.isMobile ?? false,
     dominio,
     redes_sociais: redesSociais,
+    whatsapp,
   };
 }
 
@@ -38,7 +47,7 @@ export function dedupeKey(lead: Lead): string {
   const phone = lead.telefone_e164 || parseBrazilianPhone(lead.telefone)?.e164;
   if (phone) return `tel:${phone}`;
   const domain = lead.dominio || extractDomain(lead.site);
-  if (domain && !isSocialDomain(domain)) return `dom:${domain}`;
+  if (domain && !isSocialDomain(domain) && !isWhatsappDomain(domain)) return `dom:${domain}`;
   return `nome:${normalizeText(lead.nome)}|${normalizeText(lead.endereco)}`;
 }
 
@@ -56,6 +65,27 @@ function completeness(lead: Lead): number {
   return COMPLETENESS_FIELDS.filter((field) => isFilled(lead[field])).length;
 }
 
+// números e CEP: duas lojas da mesma rua têm números diferentes
+const numbersOf = (text: string) => new Set(text.match(/\d+/g) ?? []);
+
+/**
+ * Endereços de uma mesma empresa: iguais, um contido no outro, ou quase os mesmos
+ * termos com os mesmos números. Sem endereço de um dos lados, não há como negar.
+ */
+export function sameAddress(first: string, second: string): boolean {
+  const a = normalizeText(first);
+  const b = normalizeText(second);
+  if (!a || !b || a === b || a.includes(b) || b.includes(a)) return true;
+  const tokensA = new Set(a.split(' '));
+  const tokensB = new Set(b.split(' '));
+  const shared = [...tokensA].filter((token) => tokensB.has(token)).length;
+  const numbersA = numbersOf(a);
+  const numbersB = numbersOf(b);
+  const sameNumbers =
+    [...numbersA].every((n) => numbersB.has(n)) && [...numbersB].every((n) => numbersA.has(n));
+  return shared / Math.min(tokensA.size, tokensB.size) >= 0.8 && sameNumbers;
+}
+
 /** Mantém o registro mais completo e preenche os campos vazios com o outro (RF3.3). */
 export function mergeLeads(first: Lead, second: Lead): Lead {
   const [base, other] = completeness(second) > completeness(first) ? [second, first] : [first, second];
@@ -66,6 +96,11 @@ export function mergeLeads(first: Lead, second: Lead): Lead {
   for (const field of ['emails', 'whatsapp', 'redes_sociais'] as const) {
     merged[field] = [...new Set([...base[field], ...other[field]])];
   }
+  // guarda os links dos cartões fundidos, para a retomada não revisitá-los
+  const urls = [
+    other.url_maps, ...(base.urls_maps_extras ?? []), ...(other.urls_maps_extras ?? []),
+  ].filter((url) => url && url !== base.url_maps);
+  merged.urls_maps_extras = [...new Set(urls)];
   if (other.status_enriquecimento === 'ok') merged.status_enriquecimento = 'ok';
   return deriveFields(merged as unknown as Lead);
 }
@@ -82,7 +117,11 @@ export function mergeIntoList(
   for (const lead of incoming) {
     const key = dedupeKey(lead);
     const index = indexByKey.get(key);
-    if (index === undefined) {
+    // mesmo telefone ou domínio, mas endereços diferentes: são unidades distintas
+    const distinctUnit = index !== undefined && !sameAddress(leads[index].endereco, lead.endereco);
+    if (distinctUnit) {
+      leads.push(lead);
+    } else if (index === undefined) {
       indexByKey.set(key, leads.length);
       leads.push(lead);
     } else {

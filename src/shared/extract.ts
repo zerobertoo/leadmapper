@@ -42,10 +42,15 @@ function safeDecode(text: string): string {
   }
 }
 
+// crédito de quem fez o site ("desenvolvido por ..."): o e-mail ao lado é da agência
+const CREDIT_PATTERN =
+  /(?:desenvolvid[oa]s?|criad[oa]s?|feit[oa]s?|hospedad[oa]s?)\s+(?:por|pel[oa])\b|(?:created|developed|designed|powered|made|hosted)\s+by\b|(?:design|site|web)\s+by\b/gi;
+const CREDIT_REGEX = new RegExp(`(?:${CREDIT_PATTERN.source})[\\s\\S]{0,300}`, 'gi');
+
 /** E-mails de links `mailto:` e do texto da página, sem falsos positivos (RF2.2). */
 export function extractEmails(rawHtml: string): string[] {
   // texto de scripts traz sequências literais como \n e >, que grudariam no começo do e-mail
-  const html = rawHtml.replace(/\\u[0-9a-f]{4}/gi, ' ').replace(/\\[nrt]/g, ' ');
+  const html = rawHtml.replace(CREDIT_REGEX, ' ').replace(/\\u[0-9a-f]{4}/gi, ' ').replace(/\\[nrt]/g, ' ');
   const candidates: string[] = [];
   for (const match of html.matchAll(MAILTO_PATTERN)) {
     candidates.push(...safeDecode(match[1]).split(/[,;]/));
@@ -136,4 +141,44 @@ export function findContactPages(html: string, baseUrl: string): string[] {
   }
   for (const path of FALLBACK_PATHS) pages.add(base.origin + path);
   return [...pages].slice(0, MAX_CONTACT_PAGES);
+}
+
+// provedores de e-mail pessoal: valem como contato de pequenas empresas
+const PERSONAL_PROVIDERS = new Set([
+  'gmail.com', 'hotmail.com', 'outlook.com', 'live.com', 'yahoo.com', 'yahoo.com.br',
+  'uol.com.br', 'bol.com.br', 'terra.com.br', 'icloud.com', 'msn.com', 'ig.com.br',
+]);
+
+const SECOND_LEVEL = new Set(['com', 'net', 'org', 'gov', 'edu', 'ind', 'eco', 'adv', 'med']);
+
+// nome da marca no domínio: "zee-dog.com" e "zeedog.com.br" viram "zeedog"
+function brandOf(domain: string): string {
+  const labels = domain.split('.');
+  const suffixLength = labels.length >= 3 && SECOND_LEVEL.has(labels[labels.length - 2]) ? 2 : 1;
+  const brand = labels[Math.max(0, labels.length - suffixLength - 1)] ?? domain;
+  return brand.replace(/-/g, '');
+}
+
+export type EmailKind = 'proprio' | 'pessoal' | 'terceiro';
+
+/** `proprio`: mesma marca do site; `pessoal`: Gmail e afins; `terceiro`: o resto (agência, rede, modelo). */
+export function classifyEmail(email: string, siteDomain: string): EmailKind {
+  const domain = email.split('@')[1] ?? '';
+  const emailBrand = brandOf(domain);
+  const siteBrand = brandOf(siteDomain);
+  const sameBrand =
+    emailBrand === siteBrand ||
+    (Math.min(emailBrand.length, siteBrand.length) >= 4 &&
+      (emailBrand.startsWith(siteBrand) || siteBrand.startsWith(emailBrand)));
+  if (sameBrand) return 'proprio';
+  return PERSONAL_PROVIDERS.has(domain) ? 'pessoal' : 'terceiro';
+}
+
+/** Mantém e-mails do próprio domínio e de provedores pessoais, os do domínio primeiro. */
+export function keepOwnEmails(emails: string[], siteDomain: string): string[] {
+  const kinds = emails.map((email) => [email, classifyEmail(email, siteDomain)] as const);
+  return [
+    ...kinds.filter(([, kind]) => kind === 'proprio'),
+    ...kinds.filter(([, kind]) => kind === 'pessoal'),
+  ].map(([email]) => email);
 }

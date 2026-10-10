@@ -1,3 +1,4 @@
+import { isNonWebsite } from './domain';
 import { parseBrazilianPhone } from './phone';
 import type { Lead } from './types';
 
@@ -10,8 +11,8 @@ export const CSV_HEADERS = [
   'Nota', 'Avaliações', 'Instagram', 'Facebook', 'Busca de origem', 'Link do Maps', 'Data da coleta',
 ];
 
-// números como +5512991234567 ou (12) 3631-0000 não são tratados como fórmula
-const PHONE_LIKE = /^\+?\d[\d\s()-]*$/;
+// números como +55 (12) 99123-4567 ou (12) 3631-0000, com ou sem vírgula, não são fórmula
+const PHONE_LIKE = /^\+?\d[\d\s()-]*(?:,\s*\+?\d[\d\s()-]*)*$/;
 
 /**
  * Escapa uma célula: aspas, quebras de linha e separador (RF5.2). Textos que
@@ -20,7 +21,9 @@ const PHONE_LIKE = /^\+?\d[\d\s()-]*$/;
  */
 export function escapeCell(value: string): string {
   let text = value;
-  if (/^[=+\-@\t\r]/.test(text) && !PHONE_LIKE.test(text)) text = `'${text}`;
+  // o Excel ignora espaços antes do gatilho de fórmula
+  const trimmed = text.trimStart();
+  if (/^[=+\-@\t\r]/.test(trimmed) && !PHONE_LIKE.test(trimmed)) text = `'${text}`;
   return /[";\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
@@ -39,6 +42,12 @@ export function exportFileName(date: Date): string {
   return `leads_${day}_${pad(date.getHours())}${pad(date.getMinutes())}.csv`;
 }
 
+// "+55 (12) 99168-9416": com parênteses e espaços o Excel mantém como texto
+function formatWhatsapp(e164: string): string {
+  const phone = parseBrazilianPhone(e164);
+  return phone ? `+55 ${phone.formatted}` : e164;
+}
+
 const formatNumber = (value: number | null) => (value === null ? '' : String(value).replace('.', ','));
 
 function socialLink(lead: Lead, domain: string): string {
@@ -52,9 +61,10 @@ function toRow(lead: Lead): string[] {
     lead.categoria,
     phone?.formatted ?? lead.telefone,
     lead.eh_celular ? 'sim' : 'não',
-    lead.whatsapp.join(', '),
+    lead.whatsapp.map(formatWhatsapp).join(', '),
     lead.emails.join(', '),
-    lead.site,
+    // perfil de rede social e link de WhatsApp saem nas colunas próprias
+    isNonWebsite(lead.site) ? '' : lead.site,
     lead.endereco,
     formatNumber(lead.nota),
     formatNumber(lead.avaliacoes),

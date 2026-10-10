@@ -94,3 +94,32 @@ describe('mergeIntoList', () => {
     expect(duplicates).toBe(1);
   });
 });
+
+describe('unidades diferentes com telefone ou domínio em comum', () => {
+  it('não funde endereços diferentes só pelo telefone', () => {
+    const a = makeLead({ telefone: '(12) 3631-0000', endereco: 'Rua A, 100 - Centro, Taubaté' });
+    const b = makeLead({ telefone: '(12) 3631-0000', endereco: 'Rua B, 250 - Independência, Taubaté' });
+    const { leads, duplicates } = mergeIntoList([], [a, b]);
+    expect(leads).toHaveLength(2);
+    expect(duplicates).toBe(0);
+  });
+
+  it('funde o mesmo estabelecimento com endereço escrito de forma levemente diferente', () => {
+    const a = makeLead({ telefone: '(12) 3631-0000', endereco: 'Rua A, 100 - Centro, Taubaté' });
+    const b = makeLead({ telefone: '(12) 3631-0000', endereco: 'Rua A, 100 - Centro, Taubaté - SP, 12000-000' });
+    expect(mergeIntoList([], [a, b]).leads).toHaveLength(1);
+  });
+
+  it('guarda o link do Maps do cartão fundido', () => {
+    const a = makeLead({ telefone: '(12) 3631-0000', url_maps: 'https://maps/a' });
+    const b = makeLead({ telefone: '(12) 3631-0000', url_maps: 'https://maps/b' });
+    const [merged] = mergeIntoList([], [a, b]).leads;
+    expect(merged.urls_maps_extras).toEqual(['https://maps/b']);
+  });
+
+  it('usa o número do site do Maps quando ele é link de WhatsApp', () => {
+    const lead = makeLead({ site: 'https://wa.me/5512991689416' });
+    expect(lead.whatsapp).toEqual(['+5512991689416']);
+    expect(dedupeKey(lead)).not.toContain('dom:');
+  });
+});

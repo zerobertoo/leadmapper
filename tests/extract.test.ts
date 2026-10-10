@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  classifyEmail,
   extractEmails,
   extractSocialProfiles,
   extractWhatsappNumbers,
   findContactPages,
+  keepOwnEmails,
 } from '../src/shared/extract';
 
 describe('extractEmails', () => {
@@ -87,5 +89,26 @@ describe('findContactPages', () => {
       'https://clinica.com.br/fale-conosco',
       'https://clinica.com.br/contact',
     ]);
+  });
+});
+
+describe('e-mails de terceiros (agência, rede, modelo)', () => {
+  it('ignora o crédito "desenvolvido por" ao lado do e-mail da agência', () => {
+    const html = '<p>contato@clinica.com.br</p><footer>Desenvolvido por <a href="mailto:suporte@agencia.com.br">Agência</a></footer>';
+    expect(extractEmails(html)).toEqual(['contato@clinica.com.br']);
+  });
+
+  it('classifica pelo domínio do site', () => {
+    expect(classifyEmail('contato@clinica.com.br', 'clinica.com.br')).toBe('proprio');
+    expect(classifyEmail('sac@petlandbr.com.br', 'petlandbrasil.com.br')).toBe('proprio');
+    expect(classifyEmail('contato@zee-dog.com', 'zeedog.com.br')).toBe('proprio');
+    expect(classifyEmail('lud.pet@hotmail.com', 'ludpetshop.wixsite.com')).toBe('pessoal');
+    expect(classifyEmail('suporte@liguesites.com.br', 'villapetstore.com.br')).toBe('terceiro');
+  });
+
+  it('mantém próprio e pessoal, descarta terceiro, com o próprio primeiro', () => {
+    expect(
+      keepOwnEmails(['a@gmail.com', 'x@agencia.com.br', 'oi@loja.com.br'], 'loja.com.br'),
+    ).toEqual(['oi@loja.com.br', 'a@gmail.com']);
   });
 });

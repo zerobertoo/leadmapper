@@ -5,6 +5,7 @@ import {
   extractSocialProfiles,
   extractWhatsappNumbers,
   findContactPages,
+  keepOwnEmails,
 } from '../shared/extract';
 
 const REQUEST_TIMEOUT_MS = 10_000;
@@ -92,7 +93,7 @@ export async function enrichSite(siteUrl: string, overrides: EnrichOptions = {})
 
   const unique = (values: string[]) => [...new Set(values)];
   return {
-    emails: unique(pages.flatMap(extractEmails)).slice(0, MAX_EMAILS),
+    emails: keepOwnEmails(unique(pages.flatMap(extractEmails)), extractDomain(home.finalUrl)).slice(0, MAX_EMAILS),
     whatsapp: unique(pages.flatMap(extractWhatsappNumbers)),
     redes_sociais: unique(pages.flatMap(extractSocialProfiles)),
     status: 'ok',
