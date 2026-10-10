@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "LeadMapper",
+  "version": "0.1.0",
+  "description": "Transforma uma busca no Google Maps em uma lista de leads em CSV.",
+  "permissions": ["storage", "unlimitedStorage", "downloads", "activeTab", "scripting"],
+  "host_permissions": [
+    "https://www.google.com/maps/*",
+    "https://www.google.com.br/maps/*",
+    "https://*/*",
+    "http://*/*"
+  ],
+  "background": { "service_worker": "background.js" },
+  "action": { "default_title": "LeadMapper", "default_popup": "popup.html" },
+  "content_scripts": [
+    {
+      "matches": ["https://www.google.com/maps/*", "https://www.google.com.br/maps/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
