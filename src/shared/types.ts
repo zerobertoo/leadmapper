@@ -9,7 +9,9 @@ export type CollectionState =
   | 'enriching'
   | 'paused'
   | 'done'
-  | 'cancelled';
+  | 'cancelled'
+  // falha que impede a coleta; a mensagem fica em STORAGE_KEYS.errorMessage
+  | 'error';
 
 export type SpeedMode = 'slow' | 'normal' | 'fast';
 
@@ -56,9 +58,11 @@ export interface Progress {
   processed: number;
   withPhone: number;
   failures: number;
+  /** Empresas puladas por já estarem salvas (retomada ou busca sobreposta). */
+  skipped: number;
 }
 
-export const EMPTY_PROGRESS: Progress = { found: 0, processed: 0, withPhone: 0, failures: 0 };
+export const EMPTY_PROGRESS: Progress = { found: 0, processed: 0, withPhone: 0, failures: 0, skipped: 0 };
 
 /** Mensagens aceitas pelo service worker vindas do popup. */
 export type PopupMessage =
@@ -70,7 +74,8 @@ export type PopupMessage =
 export type ContentEvent =
   | { type: 'LEAD_FOUND'; lead: Lead }
   | { type: 'PROGRESS'; progress: Progress }
-  | { type: 'DONE'; progress: Progress };
+  | { type: 'DONE'; progress: Progress }
+  | { type: 'ERROR'; message: string; progress: Progress };
 
 /** Mensagens aceitas pelo content script vindas do service worker. */
 export type ContentMessage =
@@ -91,7 +96,7 @@ export interface ContentReply {
 export type StatusReply =
   | { kind: 'outside_maps' }
   | { kind: 'error'; message: string }
-  | { kind: 'ready'; state: CollectionState; hasResults: boolean };
+  | { kind: 'ready'; state: CollectionState; hasResults: boolean; errorMessage?: string };
 
 export const STORAGE_KEYS = {
   state: 'collectionState',
@@ -99,6 +104,26 @@ export const STORAGE_KEYS = {
   leads: 'leads',
   // duplicados mesclados desde o início da coleta atual
   duplicates: 'duplicates',
+  errorMessage: 'errorMessage',
   // se os sites das empresas devem ser visitados na coleta atual
   enrichSites: 'enrichSites',
 } as const;
+
+/** Opções do popup, lembradas entre aberturas. Não são apagadas ao limpar a lista. */
+export interface PopupOptions {
+  limit: number;
+  speed: SpeedMode;
+  enrichSites: boolean;
+  discardWithoutContact: boolean;
+  exportScope: 'all' | 'current';
+}
+
+export const OPTIONS_STORAGE_KEY = 'options';
+
+export const DEFAULT_OPTIONS: PopupOptions = {
+  ...DEFAULT_SETTINGS,
+  discardWithoutContact: false,
+  exportScope: 'all',
+};
+
+export const MAX_LIMIT = 500;

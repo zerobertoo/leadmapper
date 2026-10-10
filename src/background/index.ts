@@ -12,6 +12,7 @@ import {
 import {
   DEFAULT_SETTINGS,
   EMPTY_PROGRESS,
+  MAX_LIMIT,
   STORAGE_KEYS,
   type CollectionState,
   type ContentEvent,
@@ -157,19 +158,25 @@ async function handlePopupMessage(message: PopupMessage): Promise<StatusReply> {
       let state = await readState();
       // aba recarregada durante a coleta: o content script voltou ao zero
       if ((state === 'running' || state === 'paused') && reply.state === 'idle') {
-        state = 'idle';
+        // sites que ficaram pendentes continuam sendo visitados
+        state = (await isEnrichmentEnabled()) && (await hasPendingSites()) ? 'enriching' : 'idle';
         await writeState(state);
       }
       // service worker reiniciado no meio do enriquecimento: retoma a fila
       if (state === 'enriching') void processPending();
-      return { kind: 'ready', state, hasResults: reply.hasResults };
+      const stored = await chrome.storage.local.get(STORAGE_KEYS.errorMessage);
+      const errorMessage =
+        state === 'error' ? (stored[STORAGE_KEYS.errorMessage] as string | undefined) : undefined;
+      return { kind: 'ready', state, hasResults: reply.hasResults, errorMessage };
     }
 
     if (message.type === 'START') {
       await writeProgress(EMPTY_PROGRESS);
       await chrome.storage.local.set({ [STORAGE_KEYS.duplicates]: 0 });
       const settings = { ...DEFAULT_SETTINGS, ...message.settings };
+      settings.limit = Math.min(Math.max(Math.floor(settings.limit) || DEFAULT_SETTINGS.limit, 1), MAX_LIMIT);
       await chrome.storage.local.set({ [STORAGE_KEYS.enrichSites]: settings.enrichSites });
+      await chrome.storage.local.remove(STORAGE_KEYS.errorMessage);
       const reply = await sendToContent(tab.id!, { type: 'START', settings });
       await writeState('running');
       return { kind: 'ready', state: 'running', hasResults: reply.hasResults };
@@ -204,6 +211,12 @@ async function handleContentEvent(event: ContentEvent): Promise<void> {
     case 'PROGRESS':
       await writeProgress(event.progress);
       break;
+    case 'ERROR':
+      await flushBatch();
+      await writeProgress(event.progress);
+      await chrome.storage.local.set({ [STORAGE_KEYS.errorMessage]: event.message });
+      await writeState('error');
+      break;
     case 'DONE':
       await flushBatch();
       await writeProgress(event.progress);
@@ -222,7 +235,12 @@ async function handleContentEvent(event: ContentEvent): Promise<void> {
 
 chrome.runtime.onMessage.addListener(
   (message: PopupMessage | ContentEvent, _sender, sendResponse: (reply?: StatusReply) => void) => {
-    if (message.type === 'LEAD_FOUND' || message.type === 'PROGRESS' || message.type === 'DONE') {
+    if (
+      message.type === 'LEAD_FOUND' ||
+      message.type === 'PROGRESS' ||
+      message.type === 'DONE' ||
+      message.type === 'ERROR'
+    ) {
       void handleContentEvent(message);
       return false;
     }
