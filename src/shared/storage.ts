@@ -20,7 +20,10 @@ export async function upsertLeads(incoming: Lead[]): Promise<void> {
   const stored = await chrome.storage.local.get([STORAGE_KEYS.leads, STORAGE_KEYS.duplicates]);
   const existing = (stored[STORAGE_KEYS.leads] as Lead[] | undefined) ?? [];
   const previousDuplicates = (stored[STORAGE_KEYS.duplicates] as number | undefined) ?? 0;
-  const { leads, duplicates } = mergeIntoList(existing, incoming);
+  // a mesma mensagem entregue duas vezes traz o mesmo id: não conta como duplicado
+  const knownIds = new Set(existing.map((lead) => lead.id));
+  const fresh = incoming.filter((lead) => !knownIds.has(lead.id));
+  const { leads, duplicates } = mergeIntoList(existing, fresh);
   await chrome.storage.local.set({
     [STORAGE_KEYS.leads]: leads,
     [STORAGE_KEYS.duplicates]: previousDuplicates + duplicates,

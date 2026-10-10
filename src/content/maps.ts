@@ -26,8 +26,13 @@ const DELAY_RANGE: Record<SpeedMode, [number, number]> = {
   fast: [400, 1000],
 };
 
+// avisa cópias anteriores deste script na mesma página (injeção dupla ou resto de
+// uma versão antiga da extensão) para pararem; só a mais nova responde
+const TAKEOVER_EVENT = 'leadmapper:takeover';
+
 let state: CollectionState = 'idle';
 let cancelRequested = false;
+let disposed = false;
 
 class CancelledError extends Error {}
 
@@ -49,9 +54,14 @@ async function checkpoint(): Promise<void> {
 }
 
 function sendEvent(event: ContentEvent): void {
-  chrome.runtime.sendMessage(event).catch(() => {
-    // service worker pode estar reiniciando; o próximo evento tenta de novo
-  });
+  if (disposed) return;
+  try {
+    chrome.runtime.sendMessage(event).catch(() => {
+      // service worker pode estar reiniciando; o próximo evento tenta de novo
+    });
+  } catch {
+    // contexto da extensão invalidado (extensão recarregada)
+  }
 }
 
 const normalizeText = (text: string | null | undefined) => (text ?? '').replace(/\s+/g, ' ').trim();
@@ -233,6 +243,7 @@ async function runCollection(settings: CollectionSettings): Promise<void> {
       errorMessage = MAPS_CHANGED_MESSAGE;
     }
   } finally {
+    if (disposed) return;
     if (errorMessage && !cancelRequested) {
       state = 'error';
       sendEvent({ type: 'ERROR', message: errorMessage, progress });
@@ -247,26 +258,43 @@ function reply(): ContentReply {
   return { ok: true, hasResults: hasResultsList(), state };
 }
 
-chrome.runtime.onMessage.addListener(
-  (message: ContentMessage, _sender, sendResponse: (reply: ContentReply) => void) => {
-    switch (message.type) {
-      case 'START':
-        if (state !== 'running' && state !== 'paused') {
-          state = 'running';
-          cancelRequested = false;
-          void runCollection(message.settings);
-        }
-        break;
-      case 'PAUSE':
-        if (state === 'running') state = 'paused';
-        break;
-      case 'RESUME':
-        if (state === 'paused') state = 'running';
-        break;
-      case 'CANCEL':
-        cancelRequested = true;
-        break;
-    }
-    sendResponse(reply());
-  },
-);
+function onMessage(
+  message: ContentMessage,
+  _sender: chrome.runtime.MessageSender,
+  sendResponse: (reply: ContentReply) => void,
+): void {
+  if (disposed) return;
+  switch (message.type) {
+    case 'START':
+      if (state !== 'running' && state !== 'paused') {
+        state = 'running';
+        cancelRequested = false;
+        void runCollection(message.settings);
+      }
+      break;
+    case 'PAUSE':
+      if (state === 'running') state = 'paused';
+      break;
+    case 'RESUME':
+      if (state === 'paused') state = 'running';
+      break;
+    case 'CANCEL':
+      cancelRequested = true;
+      break;
+  }
+  sendResponse(reply());
+}
+
+function dispose(): void {
+  disposed = true;
+  cancelRequested = true;
+  try {
+    chrome.runtime.onMessage.removeListener(onMessage);
+  } catch {
+    // contexto invalidado: o listener já não recebe nada
+  }
+}
+
+document.dispatchEvent(new CustomEvent(TAKEOVER_EVENT));
+document.addEventListener(TAKEOVER_EVENT, dispose);
+chrome.runtime.onMessage.addListener(onMessage);
