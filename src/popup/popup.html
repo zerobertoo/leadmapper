@@ -13,6 +13,9 @@
       <div><dt>Encontrados</dt><dd id="count-found">0</dd></div>
       <div><dt>Processados</dt><dd id="count-processed">0</dd></div>
       <div><dt>Com telefone</dt><dd id="count-phone">0</dd></div>
+      <div><dt>Com e-mail</dt><dd id="count-email">0</dd></div>
+      <div><dt>Com WhatsApp</dt><dd id="count-whatsapp">0</dd></div>
+      <div><dt>Sites visitados</dt><dd id="count-sites">0</dd></div>
       <div><dt>Duplicados removidos</dt><dd id="count-duplicates">0</dd></div>
       <div><dt>Erros</dt><dd id="count-failures">0</dd></div>
     </dl>
@@ -34,6 +37,10 @@
         <button id="clear" type="button">Limpar lista</button>
       </div>
     </section>
+    <label class="checkbox option">
+      <input id="enrich-sites" type="checkbox" checked />
+      Buscar e-mail e WhatsApp nos sites
+    </label>
     <div class="actions">
       <button id="start" type="button" disabled>Iniciar coleta</button>
       <button id="pause" type="button" hidden>Pausar</button>

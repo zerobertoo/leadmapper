@@ -13,6 +13,7 @@ const totalElement = document.querySelector<HTMLParagraphElement>('#total')!;
 const exportSection = document.querySelector<HTMLElement>('#export-section')!;
 const exportScope = document.querySelector<HTMLSelectElement>('#export-scope')!;
 const discardNoContact = document.querySelector<HTMLInputElement>('#discard-no-contact')!;
+const enrichSites = document.querySelector<HTMLInputElement>('#enrich-sites')!;
 const exportButton = document.querySelector<HTMLButtonElement>('#export')!;
 const clearButton = document.querySelector<HTMLButtonElement>('#clear')!;
 const buttons = {
@@ -31,7 +32,8 @@ let totalLeads = 0;
 
 // exportar e limpar só aparecem fora da coleta e com leads salvos
 function updateExportSection(): void {
-  const collecting = currentState === 'running' || currentState === 'paused';
+  const collecting =
+    currentState === 'running' || currentState === 'enriching' || currentState === 'paused';
   exportSection.hidden = collecting || totalLeads === 0;
 }
 
@@ -58,6 +60,12 @@ function render(reply: StatusReply): void {
   switch (reply.state) {
     case 'running':
       statusElement.textContent = 'Coletando…';
+      start.hidden = true;
+      pause.hidden = cancel.hidden = false;
+      countersElement.hidden = false;
+      break;
+    case 'enriching':
+      statusElement.textContent = 'Buscando e-mails e WhatsApp nos sites…';
       start.hidden = true;
       pause.hidden = cancel.hidden = false;
       countersElement.hidden = false;
@@ -97,7 +105,17 @@ async function renderCounters(): Promise<void> {
   document.querySelector('#count-found')!.textContent = String(progress.found);
   document.querySelector('#count-processed')!.textContent = String(progress.processed);
   document.querySelector('#count-phone')!.textContent = String(progress.withPhone);
-  document.querySelector('#count-failures')!.textContent = String(progress.failures);
+  const withSite = leads.filter((lead) => lead.site);
+  const visited = withSite.filter((lead) => lead.status_enriquecimento !== 'pendente').length;
+  const siteErrors = leads.filter((lead) => lead.status_enriquecimento === 'erro').length;
+  document.querySelector('#count-email')!.textContent = String(
+    leads.filter((lead) => lead.emails.length > 0).length,
+  );
+  document.querySelector('#count-whatsapp')!.textContent = String(
+    leads.filter((lead) => lead.whatsapp.length > 0).length,
+  );
+  document.querySelector('#count-sites')!.textContent = `${visited}/${withSite.length}`;
+  document.querySelector('#count-failures')!.textContent = String(progress.failures + siteErrors);
   totalElement.textContent = `Leads salvos: ${leads.length}`;
 }
 
@@ -130,7 +148,7 @@ async function run(message: PopupMessage): Promise<void> {
   render(await send(message));
 }
 
-buttons.start.addEventListener('click', () => void run({ type: 'START' }));
+buttons.start.addEventListener('click', () => void run({ type: 'START', settings: { enrichSites: enrichSites.checked } }));
 buttons.pause.addEventListener('click', () => void run({ type: 'PAUSE' }));
 buttons.resume.addEventListener('click', () => void run({ type: 'RESUME' }));
 exportButton.addEventListener('click', () => void exportCsv());
