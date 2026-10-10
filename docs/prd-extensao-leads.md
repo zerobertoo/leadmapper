@@ -244,7 +244,7 @@ Popup simples, com 360 px de largura, em português do Brasil, sem tela de confi
 | Bloqueio ou captcha por excesso de ações | Coleta interrompida | Pausas aleatórias, limite padrão de 120 por coleta, modo de velocidade lenta |
 | O Maps limita a lista a cerca de 120 resultados por busca | Cobertura parcial de cidades grandes | Permitir acumular várias buscas (por bairro ou termo) com deduplicação entre elas |
 | Sites bloqueiam o `fetch` ou exigem JavaScript | E-mail não encontrado | Registrar `erro` ou `sem_email`, sem tentar contornar bloqueios |
-| Service worker encerrado no meio da coleta | Perda de progresso | Salvar em lotes e reconstruir a fila a partir dos registros pendentes |
+| Service worker encerrado no meio da coleta | Perda de progresso | Salvar cada lead na hora e reconstruir a fila a partir dos registros pendentes |
 | E-mails e telefones desatualizados | Lista com contatos mortos | Guardar data e fonte de cada dado, sem prometer validação na v1 |
 
 **Termos de uso e LGPD**
@@ -259,7 +259,7 @@ Popup simples, com 360 px de largura, em português do Brasil, sem tela de confi
 **Entrega por fases (cada fase deve funcionar sozinha antes de passar à próxima)**
 
 1. **Fase 1, esqueleto:** projeto com Vite e TypeScript, `manifest.json` válido, popup abrindo, content script injetado no Maps, troca de mensagens entre popup, service worker e content script funcionando.
-2. **Fase 2, coleta do Maps:** rolagem da lista, abertura de cada cartão, extração dos campos, salvamento em lotes, botões de pausar, retomar e cancelar.
+2. **Fase 2, coleta do Maps:** rolagem da lista, abertura de cada cartão, extração dos campos, salvamento de cada lead na hora, botões de pausar, retomar e cancelar.
 3. **Fase 3, limpeza e exportação:** normalização de telefone, deduplicação, geração do CSV e download. Neste ponto a ferramenta já é útil sozinha.
 4. **Fase 4, enriquecimento pelos sites:** fila com concorrência limitada, extração de e-mail e WhatsApp, atualização dos registros e do progresso.
 5. **Fase 5, acabamento:** estados e mensagens de erro, configurações de velocidade e limite, retomada após interrupção, README com instalação e avisos.

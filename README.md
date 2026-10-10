@@ -93,7 +93,7 @@ Com ao menos um lead salvo, o popup mostra **Abrir lista de leads**. O painel la
 
 | Permissão | Para que serve |
 | --- | --- |
-| `storage` e `unlimitedStorage` | Guardar a lista de leads, o progresso e as opções no navegador, em lotes, para permitir retomada. Listas grandes podem passar da cota padrão. |
+| `storage` e `unlimitedStorage` | Guardar a lista de leads, o progresso e as opções no navegador, um lead por vez, para permitir retomada. Listas grandes podem passar da cota padrão. |
 | `sidePanel` | Abrir a lista de leads no painel lateral do navegador. |
 | `scripting` | Injetar o script de coleta na aba do Maps que já estava aberta antes da extensão ser instalada ou recarregada. |
 | `alarms` | Acordar o service worker a cada minuto **só enquanto há sites a visitar**, para retomar a fila se ele tiver sido encerrado com o popup fechado. |
