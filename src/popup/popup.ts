@@ -70,11 +70,11 @@ function saveOptions(): void {
   void chrome.storage.local.set({ [OPTIONS_STORAGE_KEY]: currentOptions() });
 }
 
-// exportar e limpar só aparecem fora da coleta e com leads salvos
+// exportar aparece fora da coleta e também pausado (parcial); limpar só com a coleta parada
 function updateExportSection(): void {
-  const collecting =
-    currentState === 'running' || currentState === 'enriching' || currentState === 'paused';
-  exportSection.hidden = collecting || totalLeads === 0;
+  const working = currentState === 'running' || currentState === 'enriching';
+  exportSection.hidden = working || totalLeads === 0;
+  clearButton.disabled = currentState === 'paused';
 }
 
 // mostra apenas os botões válidos para o estado atual
