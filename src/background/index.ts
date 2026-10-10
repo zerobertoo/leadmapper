@@ -1,4 +1,5 @@
 import { deriveFields } from '../shared/dedupe';
+import { appendLog } from '../shared/diagnostic';
 import { extractDomain, isNonWebsite } from '../shared/domain';
 import {
   clearAll,
@@ -42,6 +43,8 @@ const STATE_AFTER_COMMAND = {
 let pendingBatch: Lead[] = [];
 // serializa as gravações, pois upsertLeads faz leitura + escrita
 let writeChain: Promise<void> = Promise.resolve();
+// serializa as gravações do log de diagnóstico (leitura + escrita)
+let logChain: Promise<void> = Promise.resolve();
 
 function flushBatch(): Promise<void> {
   const leads = pendingBatch;
@@ -54,6 +57,21 @@ function flushBatch(): Promise<void> {
   return writeChain;
 }
 
+// selo no ícone: o popup fecha ao perder o foco, então o progresso precisa aparecer fora dele
+const BADGE_BY_STATE: Partial<Record<CollectionState, { text: string; color: string }>> = {
+  enriching: { text: '…', color: '#0b57d0' },
+  paused: { text: '||', color: '#6b7280' },
+  done: { text: 'OK', color: '#1e8e3e' },
+  error: { text: '!', color: '#d93025' },
+};
+
+async function updateBadge(state: CollectionState, processed?: number): Promise<void> {
+  const badge = BADGE_BY_STATE[state];
+  const text = badge?.text ?? (state === 'running' && processed !== undefined ? String(processed) : '');
+  await chrome.action.setBadgeText({ text });
+  await chrome.action.setBadgeBackgroundColor({ color: badge?.color ?? '#0b57d0' });
+}
+
 /**
  * Grava o estado e liga o vigia (alarme a cada minuto) só enquanto há sites a
  * visitar: se o service worker morrer com o popup fechado, o alarme o acorda
@@ -61,6 +79,7 @@ function flushBatch(): Promise<void> {
  */
 async function setState(state: CollectionState): Promise<void> {
   await writeState(state);
+  await updateBadge(state);
   if (state === 'enriching') await chrome.alarms.create(WATCHDOG_ALARM, { periodInMinutes: 1 });
   else await chrome.alarms.clear(WATCHDOG_ALARM);
 }
@@ -115,7 +134,7 @@ async function drainQueue(): Promise<void> {
       (lead) => lead.status_enriquecimento === 'pendente' && lead.site && !attempted.has(lead.id),
     );
     if (pending.length === 0) return;
-    pending.forEach((lead) => attempted.add(lead.id));
+    for (const lead of pending) attempted.add(lead.id);
     await runWithConcurrency(pending, ENRICHMENT_CONCURRENCY, enrichLead);
   }
 }
@@ -169,6 +188,7 @@ async function handlePopupMessage(message: PopupMessage): Promise<StatusReply> {
     await writeChain.catch(() => undefined);
     await clearAll();
     await chrome.alarms.clear(WATCHDOG_ALARM);
+    await updateBadge('idle');
     return { kind: 'ready', state: 'idle', hasResults: false };
   }
 
@@ -195,7 +215,7 @@ async function handlePopupMessage(message: PopupMessage): Promise<StatusReply> {
 
     if (message.type === 'START') {
       await writeProgress(EMPTY_PROGRESS);
-      await chrome.storage.local.set({ [STORAGE_KEYS.duplicates]: 0 });
+      await chrome.storage.local.set({ [STORAGE_KEYS.duplicates]: 0, [STORAGE_KEYS.startedAt]: Date.now() });
       const settings = { ...DEFAULT_SETTINGS, ...message.settings };
       settings.limit = Math.min(Math.max(Math.floor(settings.limit) || DEFAULT_SETTINGS.limit, 1), MAX_LIMIT);
       await chrome.storage.local.set({ [STORAGE_KEYS.enrichSites]: settings.enrichSites });
@@ -233,6 +253,11 @@ async function handleContentEvent(event: ContentEvent): Promise<void> {
       break;
     case 'PROGRESS':
       await writeProgress(event.progress);
+      await updateBadge('running', event.progress.processed);
+      break;
+    case 'LOG':
+      logChain = logChain.then(() => appendLog(event.text));
+      await logChain;
       break;
     case 'WARNING': {
       const stored = await chrome.storage.local.get(STORAGE_KEYS.warnings);
@@ -246,6 +271,7 @@ async function handleContentEvent(event: ContentEvent): Promise<void> {
       await flushBatch();
       await writeProgress(event.progress);
       await chrome.storage.local.set({ [STORAGE_KEYS.errorMessage]: event.message });
+      await appendLog(`Erro: ${event.message}`);
       await setState('error');
       break;
     case 'DONE':
@@ -271,7 +297,8 @@ chrome.runtime.onMessage.addListener(
       message.type === 'PROGRESS' ||
       message.type === 'DONE' ||
       message.type === 'ERROR' ||
-      message.type === 'WARNING'
+      message.type === 'WARNING' ||
+      message.type === 'LOG'
     ) {
       void handleContentEvent(message);
       return false;
