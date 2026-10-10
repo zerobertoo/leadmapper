@@ -3,7 +3,8 @@
   "name": "LeadMapper",
   "version": "0.1.0",
   "description": "Transforma uma busca no Google Maps em uma lista de leads em CSV.",
-  "permissions": ["storage", "unlimitedStorage", "downloads", "activeTab", "scripting"],
+  "permissions": ["storage", "unlimitedStorage", "alarms", "scripting"],
+  "minimum_chrome_version": "116",
   "host_permissions": [
     "https://www.google.com/maps/*",
     "https://www.google.com.br/maps/*",

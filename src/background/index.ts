@@ -1,6 +1,7 @@
 import { deriveFields } from '../shared/dedupe';
-import { extractDomain, isSocialDomain } from '../shared/domain';
+import { extractDomain, isNonWebsite } from '../shared/domain';
 import {
+  clearAll,
   patchLead,
   readLeads,
   readState,
@@ -26,7 +27,9 @@ import { enrichSite } from './enrich';
 import { runWithConcurrency } from './queue';
 
 const MAPS_URL_PATTERN = /^https:\/\/www\.google\.com(\.br)?\/maps/;
-const BATCH_SIZE = 10;
+// cada lead é gravado na hora: o service worker pode morrer a qualquer momento
+const BATCH_SIZE = 1;
+const WATCHDOG_ALARM = 'enrichment-watchdog';
 const ENRICHMENT_CONCURRENCY = 3;
 const PAUSE_POLL_MS = 300;
 
@@ -35,7 +38,7 @@ const STATE_AFTER_COMMAND = {
   CANCEL: 'cancelled',
 } as const satisfies Record<string, CollectionState>;
 
-// leads aguardando gravação; se o service worker morrer, perde no máximo BATCH_SIZE - 1
+// leads aguardando gravação; se o service worker morrer, perde no máximo BATCH_SIZE - 1 (0 hoje)
 let pendingBatch: Lead[] = [];
 // serializa as gravações, pois upsertLeads faz leitura + escrita
 let writeChain: Promise<void> = Promise.resolve();
@@ -49,6 +52,17 @@ function flushBatch(): Promise<void> {
     void writeChain.then(processPending);
   }
   return writeChain;
+}
+
+/**
+ * Grava o estado e liga o vigia (alarme a cada minuto) só enquanto há sites a
+ * visitar: se o service worker morrer com o popup fechado, o alarme o acorda
+ * e a fila é retomada.
+ */
+async function setState(state: CollectionState): Promise<void> {
+  await writeState(state);
+  if (state === 'enriching') await chrome.alarms.create(WATCHDOG_ALARM, { periodInMinutes: 1 });
+  else await chrome.alarms.clear(WATCHDOG_ALARM);
 }
 
 // ---- enriquecimento pelos sites (fila reconstruída a partir de status_enriquecimento) ----
@@ -77,8 +91,8 @@ async function enrichLead(lead: Lead): Promise<void> {
 
   const domain = extractDomain(lead.site);
   let patch: EnrichmentPatch;
-  if (!domain || isSocialDomain(domain)) {
-    // perfil de rede social não é site: a URL já foi guardada em redes_sociais (RF2.5)
+  if (!domain || isNonWebsite(lead.site)) {
+    // perfil de rede social ou link de WhatsApp não é site: a URL já foi guardada (RF2.5)
     patch = { status_enriquecimento: 'sem_site' };
   } else {
     const result = await enrichSite(lead.site);
@@ -122,7 +136,7 @@ async function processPending(): Promise<void> {
     enrichmentRunning = false;
   }
   // fila vazia depois do fim da coleta: a coleta termina de fato aqui
-  if ((await readState()) === 'enriching' && !enrichmentRunning) await writeState('done');
+  if ((await readState()) === 'enriching' && !enrichmentRunning) await setState('done');
 }
 
 async function hasPendingSites(): Promise<boolean> {
@@ -149,10 +163,19 @@ async function sendToContent(tabId: number, message: ContentMessage): Promise<Co
 }
 
 async function handlePopupMessage(message: PopupMessage): Promise<StatusReply> {
-  const tab = await getActiveMapsTab();
-  if (!tab) return { kind: 'outside_maps' };
+  if (message.type === 'CLEAR') {
+    // esvazia o buffer antes: um flush atrasado reintroduziria leads apagados
+    pendingBatch = [];
+    await writeChain.catch(() => undefined);
+    await clearAll();
+    await chrome.alarms.clear(WATCHDOG_ALARM);
+    return { kind: 'ready', state: 'idle', hasResults: false };
+  }
 
   try {
+    const tab = await getActiveMapsTab();
+    if (!tab) return { kind: 'outside_maps' };
+
     if (message.type === 'GET_STATUS') {
       const reply = await sendToContent(tab.id!, { type: 'PING' });
       let state = await readState();
@@ -160,7 +183,7 @@ async function handlePopupMessage(message: PopupMessage): Promise<StatusReply> {
       if ((state === 'running' || state === 'paused') && reply.state === 'idle') {
         // sites que ficaram pendentes continuam sendo visitados
         state = (await isEnrichmentEnabled()) && (await hasPendingSites()) ? 'enriching' : 'idle';
-        await writeState(state);
+        await setState(state);
       }
       // service worker reiniciado no meio do enriquecimento: retoma a fila
       if (state === 'enriching') void processPending();
@@ -176,9 +199,9 @@ async function handlePopupMessage(message: PopupMessage): Promise<StatusReply> {
       const settings = { ...DEFAULT_SETTINGS, ...message.settings };
       settings.limit = Math.min(Math.max(Math.floor(settings.limit) || DEFAULT_SETTINGS.limit, 1), MAX_LIMIT);
       await chrome.storage.local.set({ [STORAGE_KEYS.enrichSites]: settings.enrichSites });
-      await chrome.storage.local.remove(STORAGE_KEYS.errorMessage);
+      await chrome.storage.local.remove([STORAGE_KEYS.errorMessage, STORAGE_KEYS.warnings]);
       const reply = await sendToContent(tab.id!, { type: 'START', settings });
-      await writeState('running');
+      await setState('running');
       return { kind: 'ready', state: 'running', hasResults: reply.hasResults };
     }
 
@@ -186,14 +209,14 @@ async function handlePopupMessage(message: PopupMessage): Promise<StatusReply> {
       const reply = await sendToContent(tab.id!, { type: 'RESUME' });
       // se a coleta do Maps já terminou, o que falta é visitar os sites
       const state = reply.state === 'running' ? 'running' : 'enriching';
-      await writeState(state);
+      await setState(state);
       void processPending();
       return { kind: 'ready', state, hasResults: reply.hasResults };
     }
 
     // grava o estado antes: o DONE do content script não pode sobrescrever "cancelled"
     const state = STATE_AFTER_COMMAND[message.type];
-    await writeState(state);
+    await setState(state);
     const reply = await sendToContent(tab.id!, { type: message.type });
     if (state === 'cancelled' || state === 'paused') await flushBatch();
     return { kind: 'ready', state, hasResults: reply.hasResults };
@@ -211,11 +234,19 @@ async function handleContentEvent(event: ContentEvent): Promise<void> {
     case 'PROGRESS':
       await writeProgress(event.progress);
       break;
+    case 'WARNING': {
+      const stored = await chrome.storage.local.get(STORAGE_KEYS.warnings);
+      const known = (stored[STORAGE_KEYS.warnings] as string[] | undefined) ?? [];
+      await chrome.storage.local.set({
+        [STORAGE_KEYS.warnings]: [...new Set([...known, ...event.messages])],
+      });
+      break;
+    }
     case 'ERROR':
       await flushBatch();
       await writeProgress(event.progress);
       await chrome.storage.local.set({ [STORAGE_KEYS.errorMessage]: event.message });
-      await writeState('error');
+      await setState('error');
       break;
     case 'DONE':
       await flushBatch();
@@ -223,10 +254,10 @@ async function handleContentEvent(event: ContentEvent): Promise<void> {
       // se o usuário cancelou ou pausou, o estado é mantido
       if ((await readState()) === 'running') {
         if ((await isEnrichmentEnabled()) && (await hasPendingSites())) {
-          await writeState('enriching');
+          await setState('enriching');
           void processPending();
         } else {
-          await writeState('done');
+          await setState('done');
         }
       }
       break;
@@ -239,15 +270,25 @@ chrome.runtime.onMessage.addListener(
       message.type === 'LEAD_FOUND' ||
       message.type === 'PROGRESS' ||
       message.type === 'DONE' ||
-      message.type === 'ERROR'
+      message.type === 'ERROR' ||
+      message.type === 'WARNING'
     ) {
       void handleContentEvent(message);
       return false;
     }
-    handlePopupMessage(message).then(sendResponse);
+    handlePopupMessage(message).then(sendResponse, (error: unknown) =>
+      sendResponse({ kind: 'error', message: error instanceof Error ? error.message : String(error) }),
+    );
     return true; // resposta assíncrona
   },
 );
+
+// o alarme acorda o service worker se ele morreu no meio do enriquecimento
+chrome.alarms.onAlarm.addListener(async (alarm) => {
+  if (alarm.name !== WATCHDOG_ALARM) return;
+  if ((await readState()) === 'enriching') void processPending();
+  else await chrome.alarms.clear(WATCHDOG_ALARM);
+});
 
 // ao acordar, continua o enriquecimento que ficou pela metade
 void readState().then((state) => {

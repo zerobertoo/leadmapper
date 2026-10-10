@@ -1,5 +1,6 @@
 import { exportFileName, hasContact, leadsToCsv, selectLeadsForExport } from '../shared/csv';
-import { clearAll, readDuplicates, readLeads, readProgress } from '../shared/storage';
+import { isNonWebsite } from '../shared/domain';
+import { readDuplicates, readLeads, readProgress } from '../shared/storage';
 import {
   DEFAULT_OPTIONS,
   MAX_LIMIT,
@@ -13,6 +14,7 @@ import {
 } from '../shared/types';
 
 const statusElement = document.querySelector<HTMLParagraphElement>('#status')!;
+const warningsElement = document.querySelector<HTMLUListElement>('#warnings')!;
 const countersElement = document.querySelector<HTMLElement>('#counters')!;
 const totalElement = document.querySelector<HTMLParagraphElement>('#total')!;
 const exportSection = document.querySelector<HTMLElement>('#export-section')!;
@@ -162,7 +164,7 @@ async function renderCounters(): Promise<void> {
   document.querySelector('#count-found')!.textContent = String(progress.found);
   document.querySelector('#count-processed')!.textContent = String(progress.processed);
   document.querySelector('#count-phone')!.textContent = String(progress.withPhone);
-  const withSite = leads.filter((lead) => lead.site);
+  const withSite = leads.filter((lead) => lead.site && !isNonWebsite(lead.site));
   const visited = withSite.filter((lead) => lead.status_enriquecimento !== 'pendente').length;
   const siteErrors = leads.filter((lead) => lead.status_enriquecimento === 'erro').length;
   document.querySelector('#count-email')!.textContent = String(
@@ -174,6 +176,12 @@ async function renderCounters(): Promise<void> {
   document.querySelector('#count-sites')!.textContent = `${visited}/${withSite.length}`;
   document.querySelector('#count-failures')!.textContent = String(progress.failures + siteErrors);
   totalElement.textContent = `Leads salvos: ${leads.length}`;
+  const stored = await chrome.storage.local.get(STORAGE_KEYS.warnings);
+  const warnings = (stored[STORAGE_KEYS.warnings] as string[] | undefined) ?? [];
+  warningsElement.replaceChildren(
+    ...warnings.map((text) => Object.assign(document.createElement('li'), { textContent: text })),
+  );
+  warningsElement.hidden = warnings.length === 0;
   const withoutContact = leads.filter((lead) => !hasContact(lead)).length;
   document.querySelector('#no-contact-count')!.textContent = `(${withoutContact} na lista)`;
 }
@@ -198,13 +206,19 @@ async function exportCsv(): Promise<void> {
 
 async function clearList(): Promise<void> {
   if (!confirm('Apagar todos os leads salvos? Essa ação não pode ser desfeita.')) return;
-  await clearAll();
+  // o service worker esvazia o buffer e apaga o storage
+  await send({ type: 'CLEAR' });
   await renderCounters();
   await run({ type: 'GET_STATUS' });
 }
 
 async function run(message: PopupMessage): Promise<void> {
-  render(await send(message));
+  try {
+    render(await send(message));
+  } catch (error) {
+    // service worker não respondeu: mostra o erro e deixa tentar de novo
+    render({ kind: 'error', message: error instanceof Error ? error.message : String(error) });
+  }
 }
 
 buttons.start.addEventListener('click', () => {
@@ -225,7 +239,7 @@ buttons.cancel.addEventListener('click', () => void run({ type: 'CANCEL' }));
 
 // contadores ao vivo e mudanças de estado (ex.: coleta concluída com o popup aberto)
 chrome.storage.onChanged.addListener((changes) => {
-  if (STORAGE_KEYS.progress in changes || STORAGE_KEYS.leads in changes) void renderCounters();
+  if (STORAGE_KEYS.progress in changes || STORAGE_KEYS.leads in changes || STORAGE_KEYS.warnings in changes) void renderCounters();
   if (STORAGE_KEYS.state in changes) void run({ type: 'GET_STATUS' });
 });
 
