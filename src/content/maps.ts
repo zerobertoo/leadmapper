@@ -1,5 +1,7 @@
+import { placeKey } from '../shared/domain';
 import {
   EMPTY_PROGRESS,
+  STORAGE_KEYS,
   type CollectionSettings,
   type CollectionState,
   type ContentEvent,
@@ -14,6 +16,8 @@ import { SELECTORS } from './selectors';
 const DETAILS_TIMEOUT_MS = 8000;
 const POLL_INTERVAL_MS = 200;
 const MAX_IDLE_SCROLLS = 3;
+const MAPS_CHANGED_MESSAGE =
+  'O Google mudou a página do Maps; atualize a extensão ou tente de novo.';
 
 // faixa de pausa aleatória (ms) entre ações, por velocidade
 const DELAY_RANGE: Record<SpeedMode, [number, number]> = {
@@ -29,9 +33,13 @@ class CancelledError extends Error {}
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
-function randomDelay(speed: SpeedMode): Promise<void> {
+/** Pausa aleatória que acorda cedo se a coleta for pausada ou cancelada. */
+async function randomDelay(speed: SpeedMode): Promise<void> {
   const [min, max] = DELAY_RANGE[speed];
-  return sleep(min + Math.random() * (max - min));
+  const deadline = Date.now() + min + Math.random() * (max - min);
+  while (Date.now() < deadline && state === 'running' && !cancelRequested) {
+    await sleep(Math.min(POLL_INTERVAL_MS, Math.max(0, deadline - Date.now())));
+  }
 }
 
 // bloqueia enquanto pausado e interrompe se a coleta foi cancelada
@@ -79,6 +87,13 @@ function readSearchQuery(): string {
   return match ? decodeURIComponent(match[1].replace(/\+/g, ' ')) : '';
 }
 
+// empresas já salvas em coletas anteriores, para retomar sem repetir visitas
+async function readKnownPlaces(): Promise<Set<string>> {
+  const stored = await chrome.storage.local.get(STORAGE_KEYS.leads);
+  const leads = (stored[STORAGE_KEYS.leads] as Lead[] | undefined) ?? [];
+  return new Set(leads.map((lead) => placeKey(lead.url_maps)));
+}
+
 /** Rola a lista até o fim, até o limite, ou até 3 rolagens seguidas sem itens novos (RF1.2). */
 async function scrollListToEnd(settings: CollectionSettings): Promise<void> {
   let idleScrolls = 0;
@@ -105,11 +120,15 @@ function findDetailsPanel(): HTMLElement | null {
 /**
  * Espera o painel de detalhes mostrar a empresa clicada. Aceita o painel quando
  * o nome bate com o do cartão ou, como plano B, quando mudou em relação ao anterior.
+ * O tempo parado em pausa não conta para o timeout.
  */
 async function waitForDetails(expectedName: string, previousName: string): Promise<HTMLElement> {
-  const deadline = Date.now() + DETAILS_TIMEOUT_MS;
+  let deadline = Date.now() + DETAILS_TIMEOUT_MS;
   while (Date.now() < deadline) {
+    const checkpointStart = Date.now();
     await checkpoint();
+    deadline += Date.now() - checkpointStart;
+
     const panel = findDetailsPanel();
     const shownName = normalizeText(panel?.getAttribute('aria-label'));
     if (panel && shownName && (shownName === expectedName || shownName !== previousName)) {
@@ -163,15 +182,29 @@ async function runCollection(settings: CollectionSettings): Promise<void> {
   const progress: Progress = { ...EMPTY_PROGRESS };
   const searchQuery = readSearchQuery();
   let previousName = '';
+  let errorMessage = '';
 
   try {
+    const knownPlaces = await readKnownPlaces();
     await scrollListToEnd(settings);
     const cards = listCards().slice(0, settings.limit);
     progress.found = cards.length;
     sendEvent({ type: 'PROGRESS', progress: { ...progress } });
 
+    if (cards.length === 0) {
+      errorMessage = MAPS_CHANGED_MESSAGE;
+      return;
+    }
+
     for (const card of cards) {
       await checkpoint();
+      if (knownPlaces.has(placeKey(card.url))) {
+        // já coletado antes (retomada ou busca sobreposta)
+        progress.skipped++;
+        progress.processed++;
+        sendEvent({ type: 'PROGRESS', progress: { ...progress } });
+        continue;
+      }
       try {
         card.element.scrollIntoView({ block: 'center' });
         card.element.click();
@@ -190,11 +223,23 @@ async function runCollection(settings: CollectionSettings): Promise<void> {
       sendEvent({ type: 'PROGRESS', progress: { ...progress } });
       await randomDelay(settings.speed);
     }
+
+    // nenhum item deu certo: quase certamente os seletores deixaram de funcionar
+    const attempted = progress.processed - progress.skipped;
+    if (attempted > 0 && progress.failures === attempted) errorMessage = MAPS_CHANGED_MESSAGE;
   } catch (error) {
-    if (!(error instanceof CancelledError)) console.error('[LeadMapper] coleta interrompida:', error);
+    if (!(error instanceof CancelledError)) {
+      console.error('[LeadMapper] coleta interrompida:', error);
+      errorMessage = MAPS_CHANGED_MESSAGE;
+    }
   } finally {
-    state = cancelRequested ? 'cancelled' : 'done';
-    sendEvent({ type: 'DONE', progress });
+    if (errorMessage && !cancelRequested) {
+      state = 'error';
+      sendEvent({ type: 'ERROR', message: errorMessage, progress });
+    } else {
+      state = cancelRequested ? 'cancelled' : 'done';
+      sendEvent({ type: 'DONE', progress });
+    }
   }
 }
 
