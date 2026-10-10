@@ -36,7 +36,7 @@ const scriptBuild = (file: string) => ({
   },
 });
 
-const test = { include: ['tests/**/*.test.ts'] };
+const test = { root: import.meta.dirname, include: ['tests/**/*.test.ts'] };
 
 export default defineConfig(
   entry === 'popup'
