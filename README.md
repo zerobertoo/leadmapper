@@ -60,7 +60,17 @@ Se a aba ou o navegador fechou no meio, os leads já salvos continuam na lista. 
 
 ### O CSV
 
-UTF-8 com BOM, separador `;`, cabeçalho em português, pronto para o Excel e para o Google Sheets. Colunas: Nome, Categoria, Telefone, Celular, WhatsApp, E-mail, Site, Endereço, Nota, Avaliações, Instagram, Facebook, Busca de origem, Link do Maps, Data da coleta e, no fim, Tipo de e-mail (genérico ou pessoal, por e-mail). Telefones e WhatsApp saem normalizados (`+55DDDNÚMERO` internamente; no CSV, `+55 (12) 99168-9416`). A coluna Site fica vazia quando o site do Maps é uma rede social ou um link de WhatsApp. E-mails de outro domínio (agência, modelo de formulário) são descartados; ficam os do domínio da empresa e de provedores pessoais (Gmail, Hotmail etc.).
+UTF-8 com BOM, separador `;`, cabeçalho em português, pronto para o Excel e para o Google Sheets. Colunas: Nome, Categoria, Telefone, Celular, WhatsApp, E-mail, Site, Endereço, Nota, Avaliações, Instagram, Facebook, Busca de origem, Link do Maps, Data da coleta e, no fim, Tipo de e-mail (genérico ou pessoal, por e-mail), Status, Tags, Horário (quando o Maps mostra) e Outras redes (LinkedIn da empresa, YouTube, TikTok). Telefones e WhatsApp saem normalizados (`+55DDDNÚMERO` internamente; no CSV, `+55 (12) 99168-9416`). A coluna Site fica vazia quando o site do Maps é uma rede social ou um link de WhatsApp. E-mails de outro domínio (agência, modelo de formulário) são descartados; ficam os do domínio da empresa e de provedores pessoais (Gmail, Hotmail etc.).
+
+### Lista de leads (painel lateral)
+
+Com ao menos um lead salvo, o popup mostra **Abrir lista de leads**. O painel lateral permite:
+
+- buscar por nome, categoria, endereço, telefone, e-mail e tag (sem diferenciar acentos);
+- filtrar por busca de origem, por status e só com contato, e ordenar por data, nome, nota ou avaliações;
+- marcar o status do contato (Novo, Contatado, Sem interesse, Cliente) e escrever tags, um lead por vez ou em lote;
+- remover leads selecionados (com confirmação);
+- exportar o que está filtrado, ou só a seleção, em **CSV**, **JSON** (todos os campos, inclusive fonte e data de cada dado) ou **vCard** (importa no Google Contatos e no Outlook).
 
 ### Acompanhar e diagnosticar
 
@@ -84,6 +94,7 @@ UTF-8 com BOM, separador `;`, cabeçalho em português, pronto para o Excel e pa
 | Permissão | Para que serve |
 | --- | --- |
 | `storage` e `unlimitedStorage` | Guardar a lista de leads, o progresso e as opções no navegador, em lotes, para permitir retomada. Listas grandes podem passar da cota padrão. |
+| `sidePanel` | Abrir a lista de leads no painel lateral do navegador. |
 | `scripting` | Injetar o script de coleta na aba do Maps que já estava aberta antes da extensão ser instalada ou recarregada. |
 | `alarms` | Acordar o service worker a cada minuto **só enquanto há sites a visitar**, para retomar a fila se ele tiver sido encerrado com o popup fechado. |
 | `https://www.google.com/maps/*` e `https://www.google.com.br/maps/*` | Rodar o script de coleta nas páginas do Maps. |
@@ -118,7 +129,8 @@ src/
     index.ts              orquestra a coleta, persiste e dispara o enriquecimento
     queue.ts              fila com limite de concorrência
     enrich.ts             visita os sites e extrai contatos
-  popup/                  interface (HTML, CSS e TypeScript puros)
+  popup/                  coleta, progresso e exportação (HTML, CSS e TypeScript puros)
+  sidepanel/              lista de leads: busca, filtros, status, tags, remoção e exportação
   shared/
     types.ts              tipos, mensagens e chaves de storage
     phone.ts              normalização de telefone
@@ -128,6 +140,8 @@ src/
     domain.ts             domínio, redes sociais e identificador da empresa
     storage.ts            leitura e escrita em chrome.storage.local
     diagnostic.ts         log de diagnóstico local (anel de 200 eventos)
+    leadList.ts           filtros, ordenação e buscas da lista de leads
+    export.ts             JSON e vCard
     eta.ts                tempo estimado restante
 tests/                    testes unitários das funções puras
 ```

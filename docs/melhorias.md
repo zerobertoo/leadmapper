@@ -197,6 +197,21 @@ Diferenças em relação ao plano:
 
 Pendente de validação no navegador: dialog de "Limpar lista" (Esc, foco, "Exportar antes"), progresso com tempo estimado, badge com o popup fechado e leitura do popup com leitor de tela.
 
+### Status da Onda 3 (2026-10-10)
+
+Implementado, com 93 testes, typecheck, lint e build verdes: U1, U9, D7, D8, D9 e E3 (versão única).
+
+- **U1/U9**: painel lateral (`src/sidepanel/`) aberto por botão no popup (`chrome.sidePanel.open` no clique). Busca, filtro por busca de origem e status, só com contato, ordenação, seleção, status e tags em lote, remoção com diálogo e exportação do filtrado ou da seleção. Edições e remoções passam pelo service worker (`UPDATE_LEADS` e `DELETE_LEADS`), na mesma fila das gravações. A tabela vira cartões em largura estreita (`@container`).
+- **D7**: JSON e vCard 3.0. XLSX segue fora (decisão 7).
+- **D8**: `status_contato` e `tags` por lead; saem no CSV (colunas no fim).
+- **D9**: horário de funcionamento (seletor ainda a validar no DOM real) e LinkedIn de empresa, YouTube e TikTok como "Outras redes". Perfil pessoal do LinkedIn (`/in/`) é ignorado de propósito.
+- **E3**: a versão do `dist/manifest.json` vem do `package.json`. O `npm run package` (zip) não foi feito: publicar está fora da v1 (decisão 3).
+- `PRODUCT.md` criado a partir do PRD, para a skill impeccable.
+
+Backlog (v2+, por decisão): S3 (hosts opcionais), S5 (preparação da loja), R15 (armazenamento por lead, gatilho: >5 mil leads ou escrita >50 ms) e XLSX.
+
+Pendente de validação no navegador: abrir o painel pelo botão do popup; o seletor de horário (`[data-item-id="oh"]`); a tabela empilhada em painel estreito; exportação em vCard importada no Google Contatos.
+
 ## 5. Recomendações das skills aplicadas
 
 ### `chrome-extensions`

@@ -104,7 +104,7 @@ Extensão de navegador (Chrome, Manifest V3) que transforma uma busca no Google 
 
 **Permissões do manifest**
 
-- `permissions`: `storage`, `unlimitedStorage`, `alarms`, `scripting` (`downloads` e `activeTab` foram removidas por não terem uso).
+- `permissions`: `storage`, `unlimitedStorage`, `alarms`, `scripting`, `sidePanel` (`downloads` e `activeTab` foram removidas por não terem uso).
 - `host_permissions`: `https://www.google.com/maps/*` e `https://*/*` (necessário para o `fetch` aos sites das empresas sem bloqueio de CORS).
 - Justificar cada permissão no README, já pensando em uma futura publicação.
 
@@ -187,7 +187,7 @@ Cada lead é um objeto `Lead` salvo em `chrome.storage.local`, indexado por um `
 | coletado\_em | string | interno | Data e hora ISO 8601 |
 | status\_enriquecimento | enum | interno | `pendente`, `ok`, `sem_site`, `erro` |
 
-**Colunas do CSV (nesta ordem, cabeçalho em português):** Nome, Categoria, Telefone, Celular (sim ou não), WhatsApp, E-mail, Site, Endereço, Nota, Avaliações, Instagram, Facebook, Busca de origem, Link do Maps, Data da coleta. Colunas novas entram sempre no fim (hoje: Tipo de e-mail).
+**Colunas do CSV (nesta ordem, cabeçalho em português):** Nome, Categoria, Telefone, Celular (sim ou não), WhatsApp, E-mail, Site, Endereço, Nota, Avaliações, Instagram, Facebook, Busca de origem, Link do Maps, Data da coleta. Colunas novas entram sempre no fim (hoje: Tipo de e-mail, Status, Tags, Horário e Outras redes).
 
 Campos com várias entradas (e-mails, WhatsApp) saem em uma única célula, separados por vírgula e espaço.
 
