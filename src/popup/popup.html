@@ -13,9 +13,27 @@
       <div><dt>Encontrados</dt><dd id="count-found">0</dd></div>
       <div><dt>Processados</dt><dd id="count-processed">0</dd></div>
       <div><dt>Com telefone</dt><dd id="count-phone">0</dd></div>
+      <div><dt>Duplicados removidos</dt><dd id="count-duplicates">0</dd></div>
       <div><dt>Erros</dt><dd id="count-failures">0</dd></div>
     </dl>
     <p id="total" class="total"></p>
+    <section id="export-section" class="export" hidden>
+      <label>
+        Exportar
+        <select id="export-scope">
+          <option value="all">Toda a lista</option>
+          <option value="current">Só a busca atual</option>
+        </select>
+      </label>
+      <label class="checkbox">
+        <input id="discard-no-contact" type="checkbox" />
+        Descartar leads sem nenhum contato
+      </label>
+      <div class="actions">
+        <button id="export" type="button">Exportar CSV</button>
+        <button id="clear" type="button">Limpar lista</button>
+      </div>
+    </section>
     <div class="actions">
       <button id="start" type="button" disabled>Iniciar coleta</button>
       <button id="pause" type="button" hidden>Pausar</button>

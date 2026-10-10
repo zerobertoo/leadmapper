@@ -96,3 +96,35 @@ button:focus-visible {
   font-size: 12px;
   opacity: 0.75;
 }
+
+.export {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.export[hidden] {
+  display: none;
+}
+
+.export .actions {
+  margin-top: 4px;
+}
+
+.export select {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg);
+  font: inherit;
+}
+
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
