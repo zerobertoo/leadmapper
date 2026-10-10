@@ -151,3 +151,11 @@ describe('e-mails e LGPD no CSV', () => {
     expect(lead.emails).toEqual(['contato@clinica.com.br']);
   });
 });
+
+describe('revisão: fórmulas curtas', () => {
+  it('"+5-3" é fórmula e recebe apóstrofo; telefones continuam intactos', () => {
+    expect(escapeCell('+5-3')).toBe("'+5-3");
+    expect(escapeCell('+55 (12) 99123-4567')).toBe('+55 (12) 99123-4567');
+    expect(escapeCell('(12) 3631-0000')).toBe('(12) 3631-0000');
+  });
+});

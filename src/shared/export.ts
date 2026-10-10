@@ -8,7 +8,10 @@ export function leadsToJson(leads: Lead[], now: Date = new Date()): string {
 
 // vCard 3.0: barra, ponto e vírgula, vírgula e quebra de linha precisam de escape
 const escapeVcard = (value: string) =>
-  value.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+  value.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r\n|\r|\n/g, '\\n');
+
+// valores do tipo URI não levam o escape de texto (vírgula e ponto e vírgula são parte da URL)
+const stripLineBreaks = (value: string) => value.replace(/[\r\n]+/g, '');
 
 function vcardOf(lead: Lead): string[] {
   const phone = parseBrazilianPhone(lead.telefone);
@@ -20,7 +23,7 @@ function vcardOf(lead: Lead): string[] {
     if (number !== phone?.e164) lines.push(`TEL;TYPE=CELL:${number}`);
   }
   for (const email of lead.emails) lines.push(`EMAIL;TYPE=INTERNET,WORK:${escapeVcard(email)}`);
-  if (lead.site && /^https?:\/\//i.test(lead.site)) lines.push(`URL:${escapeVcard(lead.site)}`);
+  if (lead.site && /^https?:\/\//i.test(lead.site)) lines.push(`URL:${stripLineBreaks(lead.site)}`);
   if (lead.endereco) lines.push(`ADR;TYPE=WORK:;;${escapeVcard(lead.endereco)};;;;`);
   if (lead.categoria) lines.push(`TITLE:${escapeVcard(lead.categoria)}`);
   if (lead.tags?.length) lines.push(`CATEGORIES:${lead.tags.map(escapeVcard).join(',')}`);
@@ -31,5 +34,5 @@ function vcardOf(lead: Lead): string[] {
 
 /** Um cartão vCard 3.0 por lead, com CRLF entre as linhas; importa no Google Contatos e no Outlook. */
 export function leadsToVcard(leads: Lead[]): string {
-  return leads.map((lead) => vcardOf(lead).join('\r\n')).join('\r\n') + '\r\n';
+  return `${leads.map((lead) => vcardOf(lead).join('\r\n')).join('\r\n')}\r\n`;
 }

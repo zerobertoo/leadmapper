@@ -18,8 +18,9 @@ export const CSV_HEADERS = [
   'Outras redes',
 ];
 
-// números como +55 (12) 99123-4567 ou (12) 3631-0000, com ou sem vírgula, não são fórmula
-const PHONE_LIKE = /^\+?\d[\d\s()-]*(?:,\s*\+?\d[\d\s()-]*)*$/;
+// números como +55 (12) 99123-4567 ou (12) 3631-0000, com ou sem vírgula, não são fórmula;
+// exige 8 dígitos ou mais, para "+5-3" (soma no Excel) receber o apóstrofo
+const PHONE_LIKE = /^(?=(?:\D*\d){8,})\+?\d[\d\s()-]*(?:,\s*\+?\d[\d\s()-]*)*$/;
 
 /**
  * Escapa uma célula: aspas, quebras de linha e separador (RF5.2). Textos que

@@ -52,3 +52,12 @@ describe('leadsToJson', () => {
     expect(data.leads[0].tags).toEqual(['vip', 'centro']);
   });
 });
+
+describe('revisão: vCard', () => {
+  it('quebra de linha solta não injeta propriedades e a URL não leva barras', () => {
+    const text = leadsToVcard([{ ...lead, nome: 'A\rEND:VCARD\rBEGIN:VCARD', site: 'https://x.com/a,b;c' }]);
+    expect(text.split('\r\n').filter((line) => line.startsWith('BEGIN:VCARD'))).toHaveLength(1);
+    expect(text).not.toMatch(/[^\n]\r[^\n]/);
+    expect(text).toContain('URL:https://x.com/a,b;c');
+  });
+});
