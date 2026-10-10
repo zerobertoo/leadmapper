@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { extractDomain, isSocialDomain, placeKey } from '../src/shared/domain';
+import { extractDomain, isNonWebsite, isSocialDomain, placeId, placeKey } from '../src/shared/domain';
 
 describe('placeKey', () => {
   it('usa o par de ids da empresa e ignora parâmetros de rastreamento', () => {
@@ -23,5 +23,19 @@ describe('extractDomain e isSocialDomain', () => {
     expect(isSocialDomain('instagram.com')).toBe(true);
     expect(isSocialDomain('l.facebook.com')).toBe(true);
     expect(isSocialDomain('clinica.com.br')).toBe(false);
+  });
+});
+
+describe('placeId e isNonWebsite', () => {
+  it('lê o id do Maps ou devolve null', () => {
+    expect(placeId('https://www.google.com/maps/place/X/data=!1s0x94cc:0xAB!8m2')).toBe('0x94cc:0xab');
+    expect(placeId('https://www.google.com/maps/place/X')).toBeNull();
+  });
+
+  it('reconhece redes sociais e WhatsApp como não-site', () => {
+    expect(isNonWebsite('https://www.instagram.com/x')).toBe(true);
+    expect(isNonWebsite('https://wa.me/5512999999999')).toBe(true);
+    expect(isNonWebsite('https://api.whatsapp.com/send?phone=5512999999999')).toBe(true);
+    expect(isNonWebsite('https://clinica.com.br')).toBe(false);
   });
 });

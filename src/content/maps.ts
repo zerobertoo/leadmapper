@@ -12,6 +12,17 @@ import {
   type SpeedMode,
 } from '../shared/types';
 import { SELECTORS } from './selectors';
+import {
+  extractLead,
+  fieldWarnings,
+  findDetailsPanel,
+  isPanelForCard,
+  listCards,
+  normalizeText,
+  panelSignature,
+  queryFirst,
+  type ResultCard,
+} from './parse';
 
 const DETAILS_TIMEOUT_MS = 8000;
 const POLL_INTERVAL_MS = 200;
@@ -64,34 +75,13 @@ function sendEvent(event: ContentEvent): void {
   }
 }
 
-const normalizeText = (text: string | null | undefined) => (text ?? '').replace(/\s+/g, ' ').trim();
-
 function hasResultsList(): boolean {
-  return document.querySelector(SELECTORS.resultsFeed) !== null;
-}
-
-interface ResultCard {
-  name: string;
-  url: string;
-  element: HTMLAnchorElement;
-}
-
-function listCards(): ResultCard[] {
-  const feed = document.querySelector(SELECTORS.resultsFeed);
-  if (!feed) return [];
-  const seenUrls = new Set<string>();
-  const cards: ResultCard[] = [];
-  for (const element of feed.querySelectorAll<HTMLAnchorElement>(SELECTORS.resultCard)) {
-    if (seenUrls.has(element.href)) continue;
-    seenUrls.add(element.href);
-    cards.push({ name: normalizeText(element.getAttribute('aria-label')), url: element.href, element });
-  }
-  return cards;
+  return queryFirst(document, SELECTORS.resultsFeed) !== null;
 }
 
 // termo pesquisado: campo de busca ou, na falta dele, o trecho /maps/search/<termo> da URL
 function readSearchQuery(): string {
-  const input = document.querySelector<HTMLInputElement>(SELECTORS.searchInput);
+  const input = queryFirst<HTMLInputElement>(document, SELECTORS.searchInput);
   if (input?.value.trim()) return input.value.trim();
   const match = location.pathname.match(/\/maps\/search\/([^/]+)/);
   return match ? decodeURIComponent(match[1].replace(/\+/g, ' ')) : '';
@@ -101,7 +91,8 @@ function readSearchQuery(): string {
 async function readKnownPlaces(): Promise<Set<string>> {
   const stored = await chrome.storage.local.get(STORAGE_KEYS.leads);
   const leads = (stored[STORAGE_KEYS.leads] as Lead[] | undefined) ?? [];
-  return new Set(leads.map((lead) => placeKey(lead.url_maps)));
+  const urls = leads.flatMap((lead) => [lead.url_maps, ...(lead.urls_maps_extras ?? [])]);
+  return new Set(urls.map(placeKey));
 }
 
 /** Rola a lista até o fim, até o limite, ou até 3 rolagens seguidas sem itens novos (RF1.2). */
@@ -111,28 +102,27 @@ async function scrollListToEnd(settings: CollectionSettings): Promise<void> {
     await checkpoint();
     const countBefore = listCards().length;
     if (countBefore >= settings.limit) return;
-    if (document.querySelector(SELECTORS.endOfList)) return;
+    if (queryFirst(document, SELECTORS.endOfList)) return;
 
-    const feed = document.querySelector(SELECTORS.resultsFeed);
+    const feed = queryFirst(document, SELECTORS.resultsFeed);
     feed?.scrollTo({ top: feed.scrollHeight, behavior: 'smooth' });
     await randomDelay(settings.speed);
     idleScrolls = listCards().length > countBefore ? 0 : idleScrolls + 1;
   }
 }
 
-function findDetailsPanel(): HTMLElement | null {
-  for (const panel of document.querySelectorAll<HTMLElement>(SELECTORS.detailsPanel)) {
-    if (panel.querySelector(SELECTORS.detailsLoadedMarker)) return panel;
-  }
-  return null;
+/** Dados do último painel aceito, para reconhecer um painel obsoleto. */
+interface PreviousPanel {
+  name: string;
+  signature: string;
+  url: string;
 }
 
 /**
- * Espera o painel de detalhes mostrar a empresa clicada. Aceita o painel quando
- * o nome bate com o do cartão ou, como plano B, quando mudou em relação ao anterior.
+ * Espera o painel de detalhes mostrar a empresa clicada (ver `isPanelForCard`).
  * O tempo parado em pausa não conta para o timeout.
  */
-async function waitForDetails(expectedName: string, previousName: string): Promise<HTMLElement> {
+async function waitForDetails(card: ResultCard, previous: PreviousPanel): Promise<HTMLElement> {
   let deadline = Date.now() + DETAILS_TIMEOUT_MS;
   while (Date.now() < deadline) {
     const checkpointStart = Date.now();
@@ -140,59 +130,63 @@ async function waitForDetails(expectedName: string, previousName: string): Promi
     deadline += Date.now() - checkpointStart;
 
     const panel = findDetailsPanel();
-    const shownName = normalizeText(panel?.getAttribute('aria-label'));
-    if (panel && shownName && (shownName === expectedName || shownName !== previousName)) {
+    if (
+      panel &&
+      isPanelForCard({
+        shownName: normalizeText(panel.getAttribute('aria-label')),
+        expectedName: card.name,
+        previousName: previous.name,
+        signature: panelSignature(panel),
+        previousSignature: previous.signature,
+        currentUrl: location.href,
+        cardUrl: card.url,
+        previousUrl: previous.url,
+      })
+    ) {
       return panel;
     }
     await sleep(POLL_INTERVAL_MS);
   }
-  throw new Error(`Painel de detalhes não carregou para "${expectedName}"`);
+  throw new Error(`Painel de detalhes não carregou para "${card.name}"`);
 }
 
-function textOf(root: ParentNode, selector: string): string {
-  return normalizeText(root.querySelector<HTMLElement>(selector)?.textContent);
-}
-
-/** "5,0 (1.234)" -> { rating: 5, reviews: 1234 } */
-function parseRating(text: string): { rating: number | null; reviews: number | null } {
-  const ratingMatch = text.match(/(\d+(?:[.,]\d+)?)/);
-  const reviewsMatch = text.match(/\(([\d.,]+)\)/);
-  return {
-    rating: ratingMatch ? Number(ratingMatch[1].replace(',', '.')) : null,
-    reviews: reviewsMatch ? Number(reviewsMatch[1].replace(/[.,]/g, '')) : null,
-  };
-}
-
-function extractLead(panel: HTMLElement, card: ResultCard, searchQuery: string): Lead {
-  const { rating, reviews } = parseRating(textOf(panel, SELECTORS.ratingBlock));
-  const site = panel.querySelector<HTMLAnchorElement>(SELECTORS.website)?.href ?? '';
-  return {
-    id: crypto.randomUUID(),
-    nome: normalizeText(panel.getAttribute('aria-label')) || card.name,
-    categoria: textOf(panel, SELECTORS.category),
-    nota: rating,
-    avaliacoes: reviews,
-    endereco: textOf(panel, SELECTORS.address),
-    telefone: textOf(panel, SELECTORS.phone),
-    telefone_e164: '',
-    eh_celular: false,
-    site,
-    dominio: '',
-    emails: [],
-    whatsapp: [],
-    redes_sociais: [],
-    url_maps: card.url,
-    busca_origem: searchQuery,
-    coletado_em: new Date().toISOString(),
-    status_enriquecimento: site ? 'pendente' : 'sem_site',
-  };
+/** Clica no cartão e devolve o lead; uma segunda tentativa antes de desistir (R1). */
+async function collectCard(
+  card: ResultCard,
+  previous: PreviousPanel,
+  searchQuery: string,
+): Promise<{ lead: Lead; panel: PreviousPanel }> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      // o elemento pode ter sido recriado pelo Maps: procura de novo pela URL
+      const element = listCards().find((candidate) => candidate.url === card.url)?.element ?? card.element;
+      element.scrollIntoView({ block: 'center' });
+      element.click();
+      const panel = await waitForDetails(card, previous);
+      return {
+        lead: extractLead(panel, card, searchQuery),
+        panel: {
+          name: normalizeText(panel.getAttribute('aria-label')),
+          signature: panelSignature(panel),
+          url: location.href,
+        },
+      };
+    } catch (error) {
+      if (error instanceof CancelledError) throw error;
+      lastError = error;
+    }
+  }
+  throw lastError;
 }
 
 async function runCollection(settings: CollectionSettings): Promise<void> {
   const progress: Progress = { ...EMPTY_PROGRESS };
   const searchQuery = readSearchQuery();
-  let previousName = '';
+  let previous: PreviousPanel = { name: '', signature: '', url: location.href };
   let errorMessage = '';
+  const collected: Lead[] = [];
+  const warned = new Set<string>();
 
   try {
     const knownPlaces = await readKnownPlaces();
@@ -216,13 +210,18 @@ async function runCollection(settings: CollectionSettings): Promise<void> {
         continue;
       }
       try {
-        card.element.scrollIntoView({ block: 'center' });
-        card.element.click();
-        const panel = await waitForDetails(card.name, previousName);
-        previousName = normalizeText(panel.getAttribute('aria-label'));
-        const lead = extractLead(panel, card, searchQuery);
+        const result = await collectCard(card, previous, searchQuery);
+        previous = result.panel;
+        const { lead } = result;
         if (lead.telefone) progress.withPhone++;
         sendEvent({ type: 'LEAD_FOUND', lead });
+        // campo vazio em quase todos os itens: seletor provavelmente quebrado
+        collected.push(lead);
+        const fresh = fieldWarnings(collected).filter((message) => !warned.has(message));
+        if (fresh.length > 0) {
+          fresh.forEach((message) => warned.add(message));
+          sendEvent({ type: 'WARNING', messages: fresh });
+        }
       } catch (error) {
         if (error instanceof CancelledError) throw error;
         // RF1.5: registra o erro e segue para o próximo

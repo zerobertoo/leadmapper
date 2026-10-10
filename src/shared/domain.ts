@@ -14,13 +14,30 @@ export function isSocialDomain(domain: string): boolean {
   return SOCIAL_DOMAINS.some((social) => domain === social || domain.endsWith(`.${social}`));
 }
 
+/** Links de WhatsApp (wa.me, api.whatsapp.com, web.whatsapp.com). */
+export function isWhatsappDomain(domain: string): boolean {
+  return domain === 'wa.me' || domain === 'whatsapp.com' || domain.endsWith('.whatsapp.com');
+}
+
+/** URL que não é site da empresa: perfil de rede social ou link de WhatsApp. */
+export function isNonWebsite(url: string): boolean {
+  const domain = extractDomain(url);
+  return isSocialDomain(domain) || isWhatsappDomain(domain);
+}
+
+/** Par de ids `0x...:0x...` do Maps na URL, ou null se não houver. */
+export function placeId(mapsUrl: string): string | null {
+  const id = mapsUrl.match(/!1s(0x[0-9a-f]+:0x[0-9a-f]+)/i);
+  return id ? id[1].toLowerCase() : null;
+}
+
 /**
  * Identificador estável de uma empresa a partir do link do Maps: o par de ids
  * `0x...:0x...`; na falta dele, o caminho sem parâmetros de rastreamento.
  */
 export function placeKey(mapsUrl: string): string {
-  const id = mapsUrl.match(/!1s(0x[0-9a-f]+:0x[0-9a-f]+)/i);
-  if (id) return id[1].toLowerCase();
+  const id = placeId(mapsUrl);
+  if (id) return id;
   try {
     const url = new URL(mapsUrl);
     return url.origin + url.pathname;

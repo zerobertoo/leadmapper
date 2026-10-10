@@ -45,6 +45,8 @@ export interface Lead {
   whatsapp: string[];
   redes_sociais: string[];
   url_maps: string;
+  /** Links do Maps de cartões mesclados a este lead (para não revisitar). */
+  urls_maps_extras?: string[];
   busca_origem: string;
   coletado_em: string;
   status_enriquecimento: EnrichmentStatus;
@@ -68,14 +70,18 @@ export const EMPTY_PROGRESS: Progress = { found: 0, processed: 0, withPhone: 0, 
 export type PopupMessage =
   | { type: 'GET_STATUS' }
   | { type: 'START'; settings?: Partial<CollectionSettings> }
-  | { type: Exclude<CollectionCommand, 'START'> };
+  | { type: Exclude<CollectionCommand, 'START'> }
+  // apaga leads e contadores, inclusive o buffer do service worker
+  | { type: 'CLEAR' };
 
 /** Eventos enviados pelo content script ao service worker. */
 export type ContentEvent =
   | { type: 'LEAD_FOUND'; lead: Lead }
   | { type: 'PROGRESS'; progress: Progress }
   | { type: 'DONE'; progress: Progress }
-  | { type: 'ERROR'; message: string; progress: Progress };
+  | { type: 'ERROR'; message: string; progress: Progress }
+  // campo vazio em quase todos os itens: coleta segue, o popup mostra o aviso
+  | { type: 'WARNING'; messages: string[] };
 
 /** Mensagens aceitas pelo content script vindas do service worker. */
 export type ContentMessage =
@@ -105,6 +111,8 @@ export const STORAGE_KEYS = {
   // duplicados mesclados desde o início da coleta atual
   duplicates: 'duplicates',
   errorMessage: 'errorMessage',
+  // avisos de campos vazios na coleta atual (string[])
+  warnings: 'warnings',
   // se os sites das empresas devem ser visitados na coleta atual
   enrichSites: 'enrichSites',
 } as const;
