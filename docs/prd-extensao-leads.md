@@ -4,7 +4,7 @@ Oct 9, 2026 · @José Roberto
 
 ## Visão geral
 
-Extensão de navegador (Chrome, Manifest V3) que transforma uma busca no Google Maps em uma lista de leads em CSV, com nome, endereço, telefone, site, e-mail e WhatsApp, sem servidor, sem banco externo e sem API paga. O nome do produto é provisório.
+Extensão de navegador (Chrome, Manifest V3) que transforma uma busca no Google Maps em uma lista de leads em CSV, com nome, endereço, telefone, site, e-mail e WhatsApp, sem servidor, sem banco externo e sem API paga.
 
 **Problema:** montar listas de prospecção à mão é lento, e as soluções prontas são caras, fechadas ou entregam dados sujos. A primeira versão resolve só a etapa de montar a lista. Qualificação, pontuação e enriquecimento com IA ficam para depois.
 

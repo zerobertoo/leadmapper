@@ -2,7 +2,7 @@
 
 Extensão de Chrome (Manifest V3) que transforma uma busca no Google Maps em uma lista de leads em CSV: nome, categoria, telefone, WhatsApp, e-mail, site, endereço, nota e redes sociais. Roda inteira no seu navegador, sem servidor, sem conta e sem API paga.
 
-> O nome do produto é provisório. A v1 roda como extensão descompactada e não está publicada na Chrome Web Store.
+> A extensão roda descompactada e não está publicada na Chrome Web Store.
 
 ## ⚠️ Avisos importantes
 
