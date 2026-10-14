@@ -1,5 +1,11 @@
 # Produto: LeadMapper
 
+<!-- impeccable:product-schema 1 -->
+
+## Platform
+
+web
+
 ## O que é
 
 Extensão de Chrome (Manifest V3) que transforma uma busca no Google Maps em uma lista de leads em CSV, JSON ou vCard. Roda 100% no navegador do usuário, sem servidor, sem conta e sem API paga.
@@ -23,3 +29,19 @@ Profissional de vendas, freelancer ou dono de pequena agência que prospecta emp
 ## Anti-objetivos
 
 Não é CRM, não envia mensagens, não pontua leads com IA, não contorna captcha nem proxy, não sincroniza na nuvem. Ver `docs/prd-extensao-leads.md` e `docs/melhorias.md` (seção v2+).
+
+## Positioning
+
+100% local: roda no navegador do usuário, sem servidor, sem conta e sem API paga; os dados ficam na máquina dele. Outras ferramentas de leads dependem de nuvem, cadastro ou créditos.
+
+## Operating Context
+
+Uso diário em Chrome (118+), na aba do Google Maps, com popup para coletar e exportar e painel lateral para revisar. Saída em CSV, JSON ou vCard, importada em planilhas ou no CRM que o usuário já tem. O enriquecimento visita os sites das empresas e pede essa permissão só ao ativar.
+
+## Evidence on Hand
+
+Apenas o código, `README.md`, `docs/prd-extensao-leads.md`, `docs/melhorias.md`, `docs/revisao.md` e a suíte de testes em `tests/`. Não há clientes, depoimentos, métricas de uso nem publicação na Chrome Web Store; não inventar nenhum deles.
+
+## Brand Commitments
+
+Nome sempre "LeadMapper". Marca e regras em `docs/branding.md` e `brand/logo.svg`.
