@@ -8,7 +8,8 @@
     "build": "npm run clean && cross-env ENTRY=background vite build && cross-env ENTRY=content vite build && cross-env ENTRY=popup vite build && cross-env ENTRY=sidepanel vite build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
-    "lint": "biome lint"
+    "lint": "biome lint",
+    "package": "npm run build && node -e \"require('fs').rmSync('leadmapper.zip',{force:true})\" && tar -a -cf leadmapper.zip -C dist ."
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.15",

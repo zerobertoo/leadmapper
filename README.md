@@ -19,6 +19,16 @@ Extensão de Chrome (Manifest V3) que transforma uma busca no Google Maps em uma
 
 ## Instalação
 
+### Pelo .zip da release (sem precisar de Node)
+
+1. Baixe o `leadmapper.zip` mais recente na aba **Releases** do repositório e descompacte em uma pasta fixa (o Chrome lê a extensão dessa pasta, então não a apague).
+2. Abra `chrome://extensions` e ative o **Modo do desenvolvedor**.
+3. Clique em **Carregar sem compactação** e escolha a pasta descompactada.
+
+Para atualizar, substitua os arquivos da pasta pelos da nova versão e clique em recarregar na extensão. O aviso de "extensões do modo desenvolvedor" ao abrir o Chrome é esperado para extensões fora da loja.
+
+### Pelo código-fonte
+
 Requisitos: Node.js 22+ (o CI usa o 24) e Chrome (ou Edge/Brave).
 
 ```bash
