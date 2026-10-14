@@ -97,6 +97,8 @@ function fillStatusOptions(select: HTMLSelectElement, firstLabel?: string): void
 }
 
 function fillSearchOptions(): void {
+  // recriar as opções fecharia o dropdown aberto
+  if (document.activeElement === searchSelect) return;
   const previous = searchSelect.value;
   searchSelect.replaceChildren(
     option('', t('allSearches', { n: allLeads.length })),
