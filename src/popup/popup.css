@@ -280,3 +280,9 @@ summary:focus-visible {
     scroll-behavior: auto;
   }
 }
+
+h1 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}

@@ -31,6 +31,10 @@ const emitManifest: Plugin = {
       const fileName = `_locales/${language}/messages.json`;
       this.emitFile({ type: 'asset', fileName, source: readFileSync(resolve(import.meta.dirname, fileName), 'utf-8') });
     }
+    for (const size of [16, 32, 48, 128]) {
+      const fileName = `icons/icon-${size}.png`;
+      this.emitFile({ type: 'asset', fileName, source: readFileSync(resolve(import.meta.dirname, `brand/icon-${size}.png`)) });
+    }
     this.emitFile({ type: 'asset', fileName: 'manifest.json', source: `${JSON.stringify(manifest, null, 2)}
 ` });
   },
