@@ -3,73 +3,266 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>LeadMapper</title>
-  <meta name="description" content="Transforma buscas do Google Maps em listas de leads. Extensão de Chrome que roda inteira no seu navegador.">
+  <title>LeadMapper · do mapa para a planilha</title>
+  <meta name="description" content="Extensão de Chrome que transforma uma busca no Google Maps em lista de leads em CSV, JSON ou vCard. Roda inteira no seu navegador, sem conta e sem API paga.">
+  <meta name="color-scheme" content="light dark">
   <link rel="icon" href="logo.svg" type="image/svg+xml">
+  <link rel="preload" href="fonts/barlow-condensed-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="style.css">
+  <script>
+    // aplica o tema salvo antes da primeira pintura, para não piscar
+    try {
+      const saved = localStorage.getItem('leadmapper-theme');
+      if (saved === 'light' || saved === 'dark') document.documentElement.dataset.theme = saved;
+    } catch {}
+  </script>
+  <script src="app.js" defer></script>
 </head>
 <body>
   <a class="skip" href="#conteudo">Ir para o conteúdo</a>
 
-  <header>
-    <img src="logo.svg" width="64" height="64" alt="">
-    <div>
-      <h1>LeadMapper</h1>
-      <p>Transforma buscas do Google Maps em listas de leads.</p>
-    </div>
+  <header class="top">
+    <a class="brand" href="#" aria-label="LeadMapper, início">
+      <img src="logo.svg" width="36" height="36" alt="">
+      <span>LeadMapper</span>
+    </a>
+    <nav aria-label="Principal">
+      <a href="#como-funciona">Como funciona</a>
+      <a href="#instalar">Instalar</a>
+      <a href="#limites">Limites</a>
+      <a href="https://github.com/zerobertoo/leadmapper">GitHub</a>
+    </nav>
+    <button class="theme" type="button" id="tema" aria-label="Tema: seguir o sistema. Clique para alternar.">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17" /><path d="M12 3.5a8.5 8.5 0 0 1 0 17Z" fill="currentColor"/></svg>
+      <span id="tema-rotulo">Sistema</span>
+    </button>
   </header>
 
   <main id="conteudo">
-    <section aria-labelledby="como-funciona">
-      <h2 id="como-funciona">Como funciona</h2>
-      <p>Extensão de Chrome (Manifest V3) que roda inteira no seu navegador, sem servidor, sem conta e sem API paga. Você pesquisa no Maps, inicia a coleta e exporta em CSV, JSON ou vCard.</p>
-      <video controls preload="metadata" poster="media/apresentacao.jpg" src="media/apresentacao.mp4">
-        Seu navegador não reproduz vídeo. <a href="media/apresentacao.mp4">Baixe o vídeo de apresentação</a>.
-      </video>
-      <details>
-        <summary>Transcrição do vídeo</summary>
-        <ol>
-          <li>Pesquise no Google Maps.</li>
-          <li>Abra a extensão e clique em Iniciar coleta.</li>
-          <li>Acompanhe a coleta: a lista rola e os contadores sobem.</li>
-          <li>Revise os leads no painel lateral, com status e tags.</li>
-          <li>Exporte em CSV, JSON ou vCard.</li>
+    <!-- Abertura: a busca vira lista -->
+    <section class="hero" aria-labelledby="titulo">
+      <div class="hero-text">
+        <h1 id="titulo">Do mapa para a planilha.</h1>
+        <p class="lead">O LeadMapper transforma uma busca no Google Maps em uma lista de leads em CSV, JSON ou vCard. Roda inteiro no seu navegador: sem servidor, sem conta e sem API paga.</p>
+        <div class="actions">
+          <a class="btn btn-primary" href="https://github.com/zerobertoo/leadmapper/releases/latest/download/leadmapper.zip">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="m7 11 5 5 5-5"/><path d="M5 20h14"/></svg>
+            Baixar leadmapper.zip
+          </a>
+          <a class="btn btn-ghost" href="#instalar">Como instalar</a>
+        </div>
+        <p class="fine">Gratuito, licença MIT. Extensão para Chrome 118 ou mais novo, instalada fora da Chrome Web Store.</p>
+      </div>
+
+      <div class="demo" id="demo" aria-labelledby="demo-titulo">
+        <div class="sheet">
+          <div class="searchbar">
+            <p id="demo-titulo" class="query"><span class="sr-only">Exemplo de busca: </span>clínicas odontológicas</p>
+            <button class="btn btn-small" type="button" id="coletar">Iniciar coleta</button>
+          </div>
+
+          <svg class="map" viewBox="0 0 660 460" role="img" aria-label="Mapa ilustrativo com seis empresas marcadas e numeradas de 1 a 6, em uma grade de A a F e de 1 a 4.">
+            <rect class="m-ground" x="30" y="30" width="600" height="400"/>
+            <g transform="translate(30 30)">
+              <path class="m-water" d="M0 318C110 282 200 350 320 318S510 262 600 302V352C510 316 420 376 320 372S110 332 0 366Z"/>
+              <rect class="m-park" x="404" y="34" width="132" height="92" rx="10"/>
+              <g class="m-street">
+                <path d="M0 110H600M0 205H600M110 0V400M360 0V400M480 0V400"/>
+              </g>
+              <g class="m-main">
+                <path d="M0 262 330 0M240 0V400"/>
+              </g>
+              <path class="m-bridge" d="M240 292V352"/>
+              <g class="m-names" font-size="9">
+                <text x="14" y="102">R. DAS ACÁCIAS</text>
+                <text x="376" y="197">AV. DO COMÉRCIO</text>
+                <text x="250" y="388" >AV. CENTRAL</text>
+                <text x="414" y="84">PRAÇA NOVA</text>
+              </g>
+            </g>
+            <!-- moldura com o índice de colunas e linhas -->
+            <rect class="m-frame" x="30" y="30" width="600" height="400"/>
+            <g class="m-grid">
+              <path d="M130 30V430M230 30V430M330 30V430M430 30V430M530 30V430M30 130H630M30 230H630M30 330H630"/>
+            </g>
+            <g class="m-index" text-anchor="middle" font-size="13">
+              <text x="80" y="20">A</text><text x="180" y="20">B</text><text x="280" y="20">C</text><text x="380" y="20">D</text><text x="480" y="20">E</text><text x="580" y="20">F</text>
+              <text x="80" y="450">A</text><text x="180" y="450">B</text><text x="280" y="450">C</text><text x="380" y="450">D</text><text x="480" y="450">E</text><text x="580" y="450">F</text>
+              <text x="14" y="85">1</text><text x="14" y="185">2</text><text x="14" y="285">3</text><text x="14" y="385">4</text>
+              <text x="646" y="85">1</text><text x="646" y="185">2</text><text x="646" y="285">3</text><text x="646" y="385">4</text>
+            </g>
+            <!-- pinos: posição em coordenadas da folha -->
+            <g class="pins" font-size="13">
+              <g transform="translate(100 90)"><g class="pin" data-n="1" style="--i:0"><path d="M0 0C-9-10-15-17-15-26a15 15 0 0 1 30 0c0 9-6 16-15 26Z"/><text y="-21" text-anchor="middle">1</text></g></g>
+              <g transform="translate(220 180)"><g class="pin" data-n="2" style="--i:1"><path d="M0 0C-9-10-15-17-15-26a15 15 0 0 1 30 0c0 9-6 16-15 26Z"/><text y="-21" text-anchor="middle">2</text></g></g>
+              <g transform="translate(350 100)"><g class="pin" data-n="3" style="--i:2"><path d="M0 0C-9-10-15-17-15-26a15 15 0 0 1 30 0c0 9-6 16-15 26Z"/><text y="-21" text-anchor="middle">3</text></g></g>
+              <g transform="translate(490 210)"><g class="pin" data-n="4" style="--i:3"><path d="M0 0C-9-10-15-17-15-26a15 15 0 0 1 30 0c0 9-6 16-15 26Z"/><text y="-21" text-anchor="middle">4</text></g></g>
+              <g transform="translate(190 290)"><g class="pin" data-n="5" style="--i:4"><path d="M0 0C-9-10-15-17-15-26a15 15 0 0 1 30 0c0 9-6 16-15 26Z"/><text y="-21" text-anchor="middle">5</text></g></g>
+              <g transform="translate(420 320)"><g class="pin" data-n="6" style="--i:5"><path d="M0 0C-9-10-15-17-15-26a15 15 0 0 1 30 0c0 9-6 16-15 26Z"/><text y="-21" text-anchor="middle">6</text></g></g>
+            </g>
+          </svg>
+
+          <table class="legend">
+            <caption>
+              <span>Leads coletados</span>
+              <span class="count" id="contador" aria-live="polite">6 leads</span>
+            </caption>
+            <thead><tr><th scope="col">Nº</th><th scope="col">Empresa</th><th scope="col">Telefone</th><th scope="col">Ref.</th></tr></thead>
+            <tbody>
+              <tr class="row" data-n="1" style="--i:0" tabindex="0"><td class="num">1</td><td>Clínica Sorriso Azul</td><td>(41) 5550-0101</td><td>A1</td></tr>
+              <tr class="row" data-n="2" style="--i:1" tabindex="0"><td class="num">2</td><td>Odonto Central</td><td>(41) 5550-0102</td><td>B2</td></tr>
+              <tr class="row" data-n="3" style="--i:2" tabindex="0"><td class="num">3</td><td>Dentes &amp; Cia</td><td>(41) 5550-0103</td><td>D1</td></tr>
+              <tr class="row" data-n="4" style="--i:3" tabindex="0"><td class="num">4</td><td>Studio Oral Praça Nova</td><td>(41) 5550-0104</td><td>E2</td></tr>
+              <tr class="row" data-n="5" style="--i:4" tabindex="0"><td class="num">5</td><td>Clínica do Sorriso</td><td>(41) 5550-0105</td><td>B3</td></tr>
+              <tr class="row" data-n="6" style="--i:5" tabindex="0"><td class="num">6</td><td>OdontoVida Rio</td><td>(41) 5550-0106</td><td>D3</td></tr>
+            </tbody>
+          </table>
+          <p class="sheet-foot">Exemplo ilustrativo com empresas e telefones fictícios.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Como funciona: a rota em três paradas, ao lado do vídeo -->
+    <section class="band-section" id="como-funciona" aria-labelledby="h-como">
+      <div class="split">
+        <div class="split-media">
+          <h2 id="h-como">Três paradas, na sua própria aba.</h2>
+          <video controls preload="metadata" poster="media/apresentacao.jpg" src="media/apresentacao.mp4">
+            Seu navegador não reproduz vídeo. <a href="media/apresentacao.mp4">Baixe o vídeo de apresentação</a>.
+          </video>
+          <details>
+            <summary>Transcrição do vídeo de 30 segundos</summary>
+            <ol>
+              <li>Pesquise no Google Maps.</li>
+              <li>Abra a extensão e clique em Iniciar coleta.</li>
+              <li>Acompanhe a coleta: a lista rola e os contadores sobem.</li>
+              <li>Revise os leads no painel lateral, com status e tags.</li>
+              <li>Exporte em CSV, JSON ou vCard.</li>
+            </ol>
+            <p>100% local. Sem conta. Sem API paga.</p>
+          </details>
+        </div>
+
+        <ol class="route">
+          <li>
+            <h3>Pesquise no Maps</h3>
+            <p>Faça a busca de sempre: tipo de empresa e cidade. A extensão trabalha na aba do Google Maps que você já tem aberta.</p>
+          </li>
+          <li>
+            <h3>Inicie a coleta</h3>
+            <p>Clique em <strong>Iniciar coleta</strong> no ícone da extensão. A lista rola sozinha, em ritmo de pessoa, com limite padrão de 120 empresas por coleta.</p>
+          </li>
+          <li>
+            <h3>Revise e exporte</h3>
+            <p>Confira os leads no painel lateral, com status e tags, e leve para a planilha ou para o CRM que você já usa.</p>
+            <p class="formats" aria-label="Formatos de exportação"><span>CSV</span><span>JSON</span><span>vCard</span></p>
+          </li>
         </ol>
-        <p>100% local. Sem conta. Sem API paga.</p>
-      </details>
+      </div>
     </section>
 
-    <section aria-labelledby="instalar">
-      <h2 id="instalar">Como instalar</h2>
-      <p>A extensão roda descompactada e não está publicada na Chrome Web Store.</p>
-      <video controls preload="metadata" poster="media/instalacao.jpg" src="media/instalacao.mp4">
-        Seu navegador não reproduz vídeo. <a href="media/instalacao.mp4">Baixe o vídeo de instalação</a>.
-      </video>
-      <ol>
-        <li>Baixe o <code>leadmapper.zip</code> na <a href="https://github.com/zerobertoo/leadmapper/releases/latest">página de releases</a> e descompacte em uma pasta fixa (o Chrome lê a extensão dessa pasta, então não a apague).</li>
-        <li>Abra <code>chrome://extensions</code> e ative o <strong>Modo do desenvolvedor</strong>.</li>
-        <li>Clique em <strong>Carregar sem compactação</strong> e escolha a pasta descompactada.</li>
-      </ol>
-      <details>
-        <summary>Transcrição do vídeo</summary>
-        <p>Baixe o leadmapper.zip na aba Releases, descompacte em uma pasta fixa, abra chrome://extensions, ative o Modo do desenvolvedor, clique em Carregar sem compactação e escolha a pasta. Depois, abra uma busca no Maps e clique no ícone da extensão.</p>
-      </details>
+    <!-- O que sai da lista -->
+    <section class="fields" aria-labelledby="h-campos">
+      <h2 id="h-campos">Cada lead sai pronto para a planilha.</h2>
+      <p class="section-lead">Nome, categoria, telefone, WhatsApp, e-mail, site, endereço, nota e redes sociais. Cada linha guarda também a busca de origem e a data da coleta, para atender pedidos de titulares da LGPD.</p>
+      <div class="table-wrap" role="region" aria-labelledby="h-campos" tabindex="0">
+        <table class="csv" aria-label="Prévia de um CSV exportado, com dados fictícios">
+          <thead>
+            <tr><th scope="col">Nome</th><th scope="col">Categoria</th><th scope="col">Telefone</th><th scope="col">WhatsApp</th><th scope="col">E-mail</th><th scope="col">Site</th><th scope="col">Endereço</th><th scope="col">Nota</th><th scope="col">Redes sociais</th><th scope="col">Busca de origem</th><th scope="col">Data da coleta</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Clínica Sorriso Azul</td><td>Clínica odontológica</td><td>(41) 5550-0101</td><td>wa.me/55415550101</td><td>contato@sorrisoazul.example</td><td>sorrisoazul.example</td><td>R. das Acácias, 120</td><td>4,8</td><td>instagram.com/sorrisoazul</td><td>clínicas odontológicas</td><td>14/10/2026</td></tr>
+            <tr><td>Odonto Central</td><td>Dentista</td><td>(41) 5550-0102</td><td>wa.me/55415550102</td><td>atendimento@odontocentral.example</td><td>odontocentral.example</td><td>Av. Central, 800</td><td>4,5</td><td>facebook.com/odontocentral</td><td>clínicas odontológicas</td><td>14/10/2026</td></tr>
+            <tr><td>Dentes &amp; Cia</td><td>Clínica odontológica</td><td>(41) 5550-0103</td><td>wa.me/55415550103</td><td>contato@dentesecia.example</td><td>dentesecia.example</td><td>Av. do Comércio, 45</td><td>4,2</td><td></td><td>clínicas odontológicas</td><td>14/10/2026</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note">Dados fictícios, só para mostrar o formato. E-mails de aparência pessoal são marcados e podem ficar fora da exportação.</p>
     </section>
 
-    <section aria-labelledby="limites">
-      <h2 id="limites">Limites e avisos</h2>
-      <ul>
-        <li><strong>Termos do Google.</strong> Os termos do Google Maps proíbem a coleta automatizada de dados. A ferramenta é de uso pessoal: age na sua sessão, em ritmo parecido com o de uma pessoa, com limite padrão de 120 empresas por coleta. Você é responsável pelo uso.</li>
-        <li><strong>LGPD.</strong> Priorize dados de pessoa jurídica (telefone comercial, e-mails genéricos como <code>contato@</code>). Cada lead guarda a busca de origem e a data da coleta. Contatos podem estar desatualizados e a v1 não os valida. Se for abordar os contatos, respeite a LGPD e as regras de cada canal.</li>
-        <li><strong>Telefone.</strong> A normalização de telefone e o cálculo de WhatsApp são só para números brasileiros (+55 e DDD).</li>
-        <li><strong>Maps em inglês.</strong> A coleta com o Maps em inglês tem fallbacks, mas ainda não foi validada no Maps real nesse idioma.</li>
-        <li><strong>O que não faz.</strong> Não contorna captcha, não usa proxy e não coleta em ritmo que uma pessoa não faria.</li>
-        <li><strong>Privacidade.</strong> Os dados ficam no navegador. Não há telemetria nem envio a servidores. As únicas requisições são as que visitam os sites das empresas, e só se você ativar essa opção.</li>
-      </ul>
+    <!-- Privacidade: a faixa em azul de marca -->
+    <section class="privacy" aria-labelledby="h-local">
+      <div class="privacy-inner">
+        <h2 id="h-local">Seus leads ficam no seu navegador.</h2>
+        <ul class="triad">
+          <li>Sem servidor</li>
+          <li>Sem conta</li>
+          <li>Sem API paga</li>
+        </ul>
+        <p>Não há telemetria nem envio a servidores. As únicas requisições são as visitas aos sites das empresas, e só se você ativar essa opção. O Chrome pede a permissão no momento em que você ativa.</p>
+      </div>
+    </section>
+
+    <!-- Instalação -->
+    <section class="band-section" id="instalar" aria-labelledby="h-instalar">
+      <div class="split">
+        <div class="split-media">
+          <h2 id="h-instalar">Instale em três passos.</h2>
+          <p class="section-lead">A extensão roda descompactada e não está publicada na Chrome Web Store.</p>
+          <video controls preload="metadata" poster="media/instalacao.jpg" src="media/instalacao.mp4">
+            Seu navegador não reproduz vídeo. <a href="media/instalacao.mp4">Baixe o vídeo de instalação</a>.
+          </video>
+          <details>
+            <summary>Transcrição do vídeo de 42 segundos</summary>
+            <p>Baixe o leadmapper.zip na aba Releases, descompacte em uma pasta fixa, abra chrome://extensions, ative o Modo do desenvolvedor, clique em Carregar sem compactação e escolha a pasta. Depois, abra uma busca no Maps e clique no ícone da extensão.</p>
+          </details>
+        </div>
+
+        <div>
+          <ol class="steps">
+            <li>Baixe o <code>leadmapper.zip</code> e descompacte em uma pasta fixa. O Chrome lê a extensão dessa pasta, então não a apague.</li>
+            <li>Abra <code>chrome://extensions</code> e ative o <strong>Modo do desenvolvedor</strong>.</li>
+            <li>Clique em <strong>Carregar sem compactação</strong> e escolha a pasta descompactada.</li>
+          </ol>
+          <div class="actions">
+            <a class="btn btn-primary" href="https://github.com/zerobertoo/leadmapper/releases/latest/download/leadmapper.zip">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="m7 11 5 5 5-5"/><path d="M5 20h14"/></svg>
+              Baixar leadmapper.zip
+            </a>
+            <a class="btn btn-ghost" href="https://github.com/zerobertoo/leadmapper/releases">Todas as versões</a>
+          </div>
+          <p class="fine">Para atualizar, troque os arquivos da pasta pelos da nova versão e clique em recarregar na extensão. O aviso de extensões do modo desenvolvedor ao abrir o Chrome é esperado para extensões fora da loja.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Limites -->
+    <section class="limits" id="limites" aria-labelledby="h-limites">
+      <h2 id="h-limites">O que você precisa saber antes de usar.</h2>
+      <dl>
+        <div>
+          <dt>Termos do Google</dt>
+          <dd>Os termos do Google Maps proíbem a coleta automatizada de dados. A ferramenta é de uso pessoal: age na sua sessão, em ritmo parecido com o de uma pessoa, com limite padrão de 120 empresas por coleta. Você é responsável pelo uso.</dd>
+        </div>
+        <div>
+          <dt>LGPD</dt>
+          <dd>Priorize dados de pessoa jurídica (telefone comercial, e-mails genéricos como <code>contato@</code>). Contatos podem estar desatualizados e a v1 não os valida. Se for abordar os contatos, respeite a LGPD e as regras de cada canal.</dd>
+        </div>
+        <div>
+          <dt>O que não faz</dt>
+          <dd>Não contorna captcha, não usa proxy e não coleta em ritmo que uma pessoa não faria. Se o Google pedir verificação, resolva você mesmo e tente mais tarde.</dd>
+        </div>
+        <div>
+          <dt>Telefone</dt>
+          <dd>A normalização de telefone e o cálculo de WhatsApp valem só para números brasileiros (+55 e DDD).</dd>
+        </div>
+        <div>
+          <dt>Maps em inglês</dt>
+          <dd>A coleta com o Maps em inglês tem fallbacks, mas ainda não foi validada no Maps real nesse idioma.</dd>
+        </div>
+        <div>
+          <dt>Fora da loja</dt>
+          <dd>Não há publicação na Chrome Web Store: a instalação é manual e as atualizações também.</dd>
+        </div>
+      </dl>
     </section>
   </main>
 
-  <footer>
+  <footer class="foot">
+    <a class="brand" href="#" aria-label="LeadMapper, voltar ao topo">
+      <img src="logo.svg" width="28" height="28" alt="">
+      <span>LeadMapper</span>
+    </a>
     <p>Licença MIT · <a href="https://github.com/zerobertoo/leadmapper">Repositório</a> · <a href="https://github.com/zerobertoo/leadmapper/releases">Releases</a></p>
   </footer>
 </body>
