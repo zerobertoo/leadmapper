@@ -92,6 +92,8 @@ export const en: Record<MessageKey, string> = {
   markAs: 'Mark as',
   apply: 'Apply',
   formatCsv: 'CSV (Excel)',
+  formatCsvGeneric: 'Generic CSV (CRM)',
+  formatCsvGoogle: 'CSV for Google Contacts',
   formatJson: 'JSON',
   formatVcard: 'vCard (contacts)',
   removeSelected: 'Remove selected',

@@ -96,6 +96,8 @@ export const pt = {
   markAs: 'Marcar como',
   apply: 'Aplicar',
   formatCsv: 'CSV (Excel)',
+  formatCsvGeneric: 'CSV genérico (CRM)',
+  formatCsvGoogle: 'CSV para Google Contatos',
   formatJson: 'JSON',
   formatVcard: 'vCard (contatos)',
   removeSelected: 'Remover selecionados',

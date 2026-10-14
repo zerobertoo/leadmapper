@@ -31,12 +31,13 @@ const PHONE_LIKE = /^(?=(?:\D*\d){8,})\+?\d[\d\s()-]*(?:,\s*\+?\d[\d\s()-]*)*$/;
  * começam com =, +, - ou @ ganham um apóstrofo, para o Excel não os executar
  * como fórmula.
  */
-export function escapeCell(value: string): string {
+export function escapeCell(value: string, separator = SEPARATOR): string {
   let text = value;
   // o Excel ignora espaços antes do gatilho de fórmula
   const trimmed = text.trimStart();
   if (/^[=+\-@\t\r]/.test(trimmed) && !PHONE_LIKE.test(trimmed)) text = `'${text}`;
-  return NEEDS_QUOTES.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+  const needsQuotes = separator === SEPARATOR ? NEEDS_QUOTES : new RegExp(`["${separator}\r\n]`);
+  return needsQuotes.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
 const pad = (value: number) => String(value).padStart(2, '0');
@@ -99,7 +100,7 @@ function toRow(lead: Lead): string[] {
 /** CSV em UTF-8 com BOM, separado por `;`, pronto para o Excel em pt-BR (RF5.1). */
 export function leadsToCsv(leads: Lead[]): string {
   const lines = [CSV_HEADERS, ...leads.map(toRow)].map((row) =>
-    row.map(escapeCell).join(SEPARATOR),
+    row.map((cell) => escapeCell(cell)).join(SEPARATOR),
   );
   return BOM + lines.join(LINE_BREAK) + LINE_BREAK;
 }

@@ -1,5 +1,6 @@
 import { exportFileName, leadsToCsv, selectLeadsForExport } from '../shared/csv';
 import { leadsToJson, leadsToVcard } from '../shared/export';
+import { GENERIC_PRESET, GOOGLE_CONTACTS_PRESET, leadsToPresetCsv } from '../shared/presets';
 import { applyI18n, t } from '../shared/i18n';
 import {
   EMPTY_FILTER,
@@ -276,8 +277,14 @@ async function exportLeads(): Promise<void> {
     case 'vcf':
       download(exportFileName(now, 'vcf'), leadsToVcard(leads), 'text/vcard');
       break;
-    default:
+    case 'csv':
       download(exportFileName(now), leadsToCsv(leads), 'text/csv');
+      break;
+    case 'csv-google':
+      download(exportFileName(now), leadsToPresetCsv(leads, GOOGLE_CONTACTS_PRESET), 'text/csv');
+      break;
+    default:
+      download(exportFileName(now), leadsToPresetCsv(leads, GENERIC_PRESET), 'text/csv');
   }
   summary.textContent = t('exported', { n: leads.length });
 }
