@@ -160,6 +160,10 @@ a:focus-visible {
   outline-offset: 2px;
 }
 
+a {
+  color: var(--accent);
+}
+
 button#export,
 button#apply-status {
   background: var(--accent);
