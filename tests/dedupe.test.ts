@@ -74,6 +74,15 @@ describe('mergeLeads', () => {
 });
 
 describe('mergeIntoList', () => {
+  it('não funde empresas de nomes diferentes quando só uma tem endereço', () => {
+    const base = { telefone: '(12) 3631-0000' };
+    const withAddress = deriveFields(makeLead({ ...base, nome: 'Clínica Sorriso', endereco: 'Rua A, 10' }));
+    const noAddress = deriveFields(makeLead({ ...base, nome: 'Dr. Paulo Dentista', endereco: '' }));
+    const { leads, duplicates } = mergeIntoList([withAddress], [noAddress]);
+    expect(leads).toHaveLength(2);
+    expect(duplicates).toBe(0);
+  });
+
   it('não duplica leads de duas buscas sobrepostas', () => {
     const first = [
       makeLead({ nome: 'A', telefone: '(12) 3631-0000' }),

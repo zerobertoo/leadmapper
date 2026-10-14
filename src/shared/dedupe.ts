@@ -87,6 +87,18 @@ export function sameAddress(first: string, second: string): boolean {
   return shared / Math.min(tokensA.size, tokensB.size) >= 0.8 && sameNumbers;
 }
 
+/**
+ * Mesma unidade: endereços compatíveis. Se só um dos lados tem endereço, os nomes
+ * também precisam combinar, para não fundir empresas diferentes de mesmo telefone ou site.
+ */
+function isSameUnit(first: Lead, second: Lead): boolean {
+  if (!sameAddress(first.endereco, second.endereco)) return false;
+  if (normalizeText(first.endereco) && normalizeText(second.endereco)) return true;
+  const a = normalizeText(first.nome);
+  const b = normalizeText(second.nome);
+  return a === b || ` ${a} `.includes(` ${b} `) || ` ${b} `.includes(` ${a} `);
+}
+
 /** Mantém o registro mais completo e preenche os campos vazios com o outro (RF3.3). */
 export function mergeLeads(first: Lead, second: Lead): Lead {
   const [base, other] = completeness(second) > completeness(first) ? [second, first] : [first, second];
@@ -128,7 +140,7 @@ export function mergeIntoList(
 
   for (const lead of incoming) {
     const key = dedupeKey(lead);
-    const sameUnit = indexesByKey.get(key)?.find((index) => sameAddress(leads[index].endereco, lead.endereco));
+    const sameUnit = indexesByKey.get(key)?.find((index) => isSameUnit(leads[index], lead));
     if (sameUnit === undefined) {
       register(key, leads.length);
       leads.push(lead);
