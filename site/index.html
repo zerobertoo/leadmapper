@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LeadMapper</title>
+  <meta name="description" content="Transforma buscas do Google Maps em listas de leads. Extensão de Chrome que roda inteira no seu navegador.">
+  <link rel="icon" href="logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <a class="skip" href="#conteudo">Ir para o conteúdo</a>
+
+  <header>
+    <img src="logo.svg" width="64" height="64" alt="">
+    <div>
+      <h1>LeadMapper</h1>
+      <p>Transforma buscas do Google Maps em listas de leads.</p>
+    </div>
+  </header>
+
+  <main id="conteudo">
+    <section aria-labelledby="como-funciona">
+      <h2 id="como-funciona">Como funciona</h2>
+      <p>Extensão de Chrome (Manifest V3) que roda inteira no seu navegador, sem servidor, sem conta e sem API paga. Você pesquisa no Maps, inicia a coleta e exporta em CSV, JSON ou vCard.</p>
+      <video controls preload="metadata" poster="media/apresentacao.jpg" src="media/apresentacao.mp4">
+        Seu navegador não reproduz vídeo. <a href="media/apresentacao.mp4">Baixe o vídeo de apresentação</a>.
+      </video>
+      <details>
+        <summary>Transcrição do vídeo</summary>
+        <ol>
+          <li>Pesquise no Google Maps.</li>
+          <li>Abra a extensão e clique em Iniciar coleta.</li>
+          <li>Acompanhe a coleta: a lista rola e os contadores sobem.</li>
+          <li>Revise os leads no painel lateral, com status e tags.</li>
+          <li>Exporte em CSV, JSON ou vCard.</li>
+        </ol>
+        <p>100% local. Sem conta. Sem API paga.</p>
+      </details>
+    </section>
+
+    <section aria-labelledby="instalar">
+      <h2 id="instalar">Como instalar</h2>
+      <p>A extensão roda descompactada e não está publicada na Chrome Web Store.</p>
+      <video controls preload="metadata" poster="media/instalacao.jpg" src="media/instalacao.mp4">
+        Seu navegador não reproduz vídeo. <a href="media/instalacao.mp4">Baixe o vídeo de instalação</a>.
+      </video>
+      <ol>
+        <li>Baixe o <code>leadmapper.zip</code> na <a href="https://github.com/zerobertoo/leadmapper/releases/latest">página de releases</a> e descompacte em uma pasta fixa (o Chrome lê a extensão dessa pasta, então não a apague).</li>
+        <li>Abra <code>chrome://extensions</code> e ative o <strong>Modo do desenvolvedor</strong>.</li>
+        <li>Clique em <strong>Carregar sem compactação</strong> e escolha a pasta descompactada.</li>
+      </ol>
+      <details>
+        <summary>Transcrição do vídeo</summary>
+        <p>Baixe o leadmapper.zip na aba Releases, descompacte em uma pasta fixa, abra chrome://extensions, ative o Modo do desenvolvedor, clique em Carregar sem compactação e escolha a pasta. Depois, abra uma busca no Maps e clique no ícone da extensão.</p>
+      </details>
+    </section>
+
+    <section aria-labelledby="limites">
+      <h2 id="limites">Limites e avisos</h2>
+      <ul>
+        <li><strong>Termos do Google.</strong> Os termos do Google Maps proíbem a coleta automatizada de dados. A ferramenta é de uso pessoal: age na sua sessão, em ritmo parecido com o de uma pessoa, com limite padrão de 120 empresas por coleta. Você é responsável pelo uso.</li>
+        <li><strong>LGPD.</strong> Priorize dados de pessoa jurídica (telefone comercial, e-mails genéricos como <code>contato@</code>). Cada lead guarda a busca de origem e a data da coleta. Contatos podem estar desatualizados e a v1 não os valida. Se for abordar os contatos, respeite a LGPD e as regras de cada canal.</li>
+        <li><strong>Telefone.</strong> A normalização de telefone e o cálculo de WhatsApp são só para números brasileiros (+55 e DDD).</li>
+        <li><strong>Maps em inglês.</strong> A coleta com o Maps em inglês tem fallbacks, mas ainda não foi validada no Maps real nesse idioma.</li>
+        <li><strong>O que não faz.</strong> Não contorna captcha, não usa proxy e não coleta em ritmo que uma pessoa não faria.</li>
+        <li><strong>Privacidade.</strong> Os dados ficam no navegador. Não há telemetria nem envio a servidores. As únicas requisições são as que visitam os sites das empresas, e só se você ativar essa opção.</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer>
+    <p>Licença MIT · <a href="https://github.com/zerobertoo/leadmapper">Repositório</a> · <a href="https://github.com/zerobertoo/leadmapper/releases">Releases</a></p>
+  </footer>
+</body>
+</html>
