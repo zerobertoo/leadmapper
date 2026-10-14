@@ -3,10 +3,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>LeadMapper · do mapa para a planilha</title>
+    <title>LeadMapper · extensão de Chrome para exportar empresas do Google Maps</title>
     <meta
       name="description"
-      content="Extensão de Chrome que transforma uma busca no Google Maps em lista de leads em CSV, JSON ou vCard. Roda inteira no seu navegador, sem conta e sem API paga."
+      content="Extensão de Chrome que coleta as empresas de uma busca no Google Maps e exporta a lista em CSV, JSON ou vCard. Funciona no navegador, sem servidor, conta ou API paga."
     />
     <meta name="color-scheme" content="light dark" />
     <link rel="icon" href="logo.svg" type="image/svg+xml" />
@@ -31,15 +31,15 @@
     <a class="skip" href="#conteudo">Ir para o conteúdo</a>
 
     <header class="top">
-      <a class="brand" href="#" aria-label="LeadMapper, início">
+      <a class="brand" href="./" aria-label="LeadMapper, início">
         <img src="logo.svg" width="36" height="36" alt="" />
         <span>LeadMapper</span>
       </a>
       <nav aria-label="Principal">
+        <a href="#por-dentro">Por dentro</a>
         <a href="#como-funciona">Como funciona</a>
         <a href="#instalar">Instalar</a>
         <a href="#limites">Limites</a>
-        <a href="https://github.com/zerobertoo/leadmapper">GitHub</a>
       </nav>
       <button
         class="theme"
@@ -71,14 +71,14 @@
         <div class="hero-text">
           <h1 id="titulo">Do mapa para a planilha.</h1>
           <p class="lead">
-            O LeadMapper transforma uma busca no Google Maps em uma lista de
-            leads em CSV, JSON ou vCard. Roda inteiro no seu navegador: sem
-            servidor, sem conta e sem API paga.
+            Extensão de Chrome que coleta as empresas de uma busca no Google
+            Maps e exporta a lista em CSV, JSON ou vCard. Funciona no
+            navegador, sem servidor, conta ou API paga.
           </p>
           <div class="actions">
             <a
               class="btn btn-primary"
-              href="https://github.com/zerobertoo/leadmapper/releases/latest"
+              href="https://github.com/zerobertoo/leadmapper/releases/latest/download/leadmapper.zip"
             >
               <svg
                 width="20"
@@ -95,13 +95,14 @@
                 <path d="m7 11 5 5 5-5" />
                 <path d="M5 20h14" />
               </svg>
-              Baixar a última versão
+              Baixar leadmapper.zip
             </a>
             <a class="btn btn-ghost" href="#instalar">Como instalar</a>
           </div>
           <p class="fine">
-            Gratuito, licença MIT. Extensão para Chrome 118 ou mais novo,
-            instalada fora da Chrome Web Store.
+            Gratuito, licença MIT. Para Chrome 118 ou mais novo, no computador.
+            A instalação é manual, leva cerca de 2 minutos e fica fora da Chrome
+            Web Store.
           </p>
         </div>
 
@@ -112,8 +113,26 @@
                 <span class="sr-only">Exemplo de busca: </span>clínicas
                 odontológicas
               </p>
-              <button class="btn btn-small" type="button" id="coletar">
-                Iniciar coleta
+              <button
+                class="btn btn-ghost btn-small"
+                type="button"
+                id="coletar"
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M4 12a8 8 0 1 0 3-6.2" />
+                  <path d="M4 4v5h5" />
+                </svg>
+                Repetir demonstração
               </button>
             </div>
 
@@ -238,7 +257,7 @@
             <table class="legend">
               <caption>
                 <span>Leads coletados</span>
-                <span class="count" id="contador" aria-live="polite"
+                <span class="count" id="contador" aria-hidden="true"
                   >6 leads</span
                 >
               </caption>
@@ -251,37 +270,37 @@
                 </tr>
               </thead>
               <tbody>
-                <tr class="row" data-n="1" style="--i: 0" tabindex="0">
+                <tr class="row" data-n="1" style="--i: 0">
                   <td class="num">1</td>
                   <td>Clínica Sorriso Azul</td>
                   <td>(41) 5550-0101</td>
                   <td>A1</td>
                 </tr>
-                <tr class="row" data-n="2" style="--i: 1" tabindex="0">
+                <tr class="row" data-n="2" style="--i: 1">
                   <td class="num">2</td>
                   <td>Odonto Central</td>
                   <td>(41) 5550-0102</td>
                   <td>B2</td>
                 </tr>
-                <tr class="row" data-n="3" style="--i: 2" tabindex="0">
+                <tr class="row" data-n="3" style="--i: 2">
                   <td class="num">3</td>
                   <td>Dentes &amp; Cia</td>
                   <td>(41) 5550-0103</td>
                   <td>D1</td>
                 </tr>
-                <tr class="row" data-n="4" style="--i: 3" tabindex="0">
+                <tr class="row" data-n="4" style="--i: 3">
                   <td class="num">4</td>
                   <td>Studio Oral Praça Nova</td>
                   <td>(41) 5550-0104</td>
                   <td>E2</td>
                 </tr>
-                <tr class="row" data-n="5" style="--i: 4" tabindex="0">
+                <tr class="row" data-n="5" style="--i: 4">
                   <td class="num">5</td>
                   <td>Clínica do Sorriso</td>
                   <td>(41) 5550-0105</td>
                   <td>B3</td>
                 </tr>
-                <tr class="row" data-n="6" style="--i: 5" tabindex="0">
+                <tr class="row" data-n="6" style="--i: 5">
                   <td class="num">6</td>
                   <td>OdontoVida Rio</td>
                   <td>(41) 5550-0106</td>
@@ -289,6 +308,7 @@
                 </tr>
               </tbody>
             </table>
+            <p class="sr-only" id="anuncio" role="status"></p>
             <p class="sheet-foot">
               Exemplo ilustrativo com empresas e telefones fictícios.
             </p>
@@ -296,11 +316,48 @@
         </div>
       </section>
 
+      <!-- A extensão por dentro: capturas reais da demonstração -->
+      <section class="band-section inside" id="por-dentro" aria-labelledby="h-dentro">
+        <h2 id="h-dentro">Capturas da extensão.</h2>
+        <p class="section-lead">
+          Tiradas da demonstração em vídeo, com empresas e telefones fictícios. O
+          painel é o da extensão.
+        </p>
+        <div class="shots">
+          <figure class="shot">
+            <img
+              src="media/captura-coleta.jpg"
+              width="1300"
+              height="730"
+              loading="lazy"
+              alt="Google Maps com a lista de clínicas à esquerda e o painel do LeadMapper coletando: 98 de 120 processadas, 84 com telefone, 55 com e-mail ou WhatsApp."
+            />
+            <figcaption>
+              <span class="num">1</span>
+              Durante a coleta, o painel mostra o progresso e as contagens.
+            </figcaption>
+          </figure>
+          <figure class="shot">
+            <img
+              src="media/captura-exportar.jpg"
+              width="1300"
+              height="730"
+              loading="lazy"
+              alt="Painel lateral do LeadMapper com a lista de 120 leads, filtros, marcação de status e o botão Exportar 120 em CSV."
+            />
+            <figcaption>
+              <span class="num">2</span>
+              Na lista, cada lead tem status e tags; a exportação é em CSV, JSON ou vCard.
+            </figcaption>
+          </figure>
+        </div>
+      </section>
+
       <!-- Como funciona: a rota em três paradas, ao lado do vídeo -->
       <section class="band-section" id="como-funciona" aria-labelledby="h-como">
         <div class="split">
           <div class="split-media">
-            <h2 id="h-como">Três paradas, na sua própria aba.</h2>
+            <h2 id="h-como">Como funciona.</h2>
             <video
               controls
               preload="metadata"
@@ -320,31 +377,30 @@
                 <li>Revise os leads no painel lateral, com status e tags.</li>
                 <li>Exporte em CSV, JSON ou vCard.</li>
               </ol>
-              <p>100% local. Sem conta. Sem API paga.</p>
             </details>
           </div>
 
           <ol class="route">
             <li>
-              <h3>Pesquise no Maps</h3>
+              <h3>Busque no Maps</h3>
               <p>
-                Faça a busca de sempre: tipo de empresa e cidade. A extensão
-                trabalha na aba do Google Maps que você já tem aberta.
+                Pesquise o tipo de empresa e a cidade. A extensão trabalha na
+                aba do Google Maps que estiver aberta.
               </p>
             </li>
             <li>
               <h3>Inicie a coleta</h3>
               <p>
                 Clique em <strong>Iniciar coleta</strong> no ícone da extensão.
-                A lista rola sozinha, em ritmo de pessoa, com limite padrão de
-                120 empresas por coleta.
+                A lista rola automaticamente, em ritmo parecido com o de uma
+                pessoa, com limite padrão de 120 empresas por coleta.
               </p>
             </li>
             <li>
               <h3>Revise e exporte</h3>
               <p>
-                Confira os leads no painel lateral, com status e tags, e leve
-                para a planilha ou para o CRM que você já usa.
+                Os leads ficam no painel lateral, com status e tags. A exportação
+                tem modelos de CSV genérico, para CRM e para Google Contatos.
               </p>
               <p class="formats" aria-label="Formatos de exportação">
                 <span>CSV</span><span>JSON</span><span>vCard</span>
@@ -356,11 +412,11 @@
 
       <!-- O que sai da lista -->
       <section class="fields" aria-labelledby="h-campos">
-        <h2 id="h-campos">Cada lead sai pronto para a planilha.</h2>
+        <h2 id="h-campos">Campos exportados.</h2>
         <p class="section-lead">
           Nome, categoria, telefone, WhatsApp, e-mail, site, endereço, nota e
           redes sociais. Cada linha guarda também a busca de origem e a data da
-          coleta, para atender pedidos de titulares da LGPD.
+          coleta, útil para atender pedidos de titulares da LGPD.
         </p>
         <div
           class="table-wrap"
@@ -375,80 +431,54 @@
             <thead>
               <tr>
                 <th scope="col">Nome</th>
-                <th scope="col">Categoria</th>
                 <th scope="col">Telefone</th>
                 <th scope="col">WhatsApp</th>
                 <th scope="col">E-mail</th>
                 <th scope="col">Site</th>
-                <th scope="col">Endereço</th>
-                <th scope="col">Nota</th>
-                <th scope="col">Redes sociais</th>
-                <th scope="col">Busca de origem</th>
-                <th scope="col">Data da coleta</th>
               </tr>
             </thead>
             <tbody>
               <tr>
                 <td>Clínica Sorriso Azul</td>
-                <td>Clínica odontológica</td>
                 <td>(41) 5550-0101</td>
                 <td>wa.me/55415550101</td>
                 <td>contato@sorrisoazul.example</td>
                 <td>sorrisoazul.example</td>
-                <td>R. das Acácias, 120</td>
-                <td>4,8</td>
-                <td>instagram.com/sorrisoazul</td>
-                <td>clínicas odontológicas</td>
-                <td>14/10/2026</td>
               </tr>
               <tr>
                 <td>Odonto Central</td>
-                <td>Dentista</td>
                 <td>(41) 5550-0102</td>
                 <td>wa.me/55415550102</td>
                 <td>atendimento@odontocentral.example</td>
                 <td>odontocentral.example</td>
-                <td>Av. Central, 800</td>
-                <td>4,5</td>
-                <td>facebook.com/odontocentral</td>
-                <td>clínicas odontológicas</td>
-                <td>14/10/2026</td>
               </tr>
               <tr>
                 <td>Dentes &amp; Cia</td>
-                <td>Clínica odontológica</td>
                 <td>(41) 5550-0103</td>
                 <td>wa.me/55415550103</td>
                 <td>contato@dentesecia.example</td>
                 <td>dentesecia.example</td>
-                <td>Av. do Comércio, 45</td>
-                <td>4,2</td>
-                <td></td>
-                <td>clínicas odontológicas</td>
-                <td>14/10/2026</td>
               </tr>
             </tbody>
           </table>
         </div>
         <p class="note">
-          Dados fictícios, só para mostrar o formato. E-mails de aparência
-          pessoal são marcados e podem ficar fora da exportação.
+          Mais seis colunas seguem no arquivo: categoria, endereço, nota, redes
+          sociais, busca de origem e data da coleta. Dados fictícios, só para
+          mostrar o formato. E-mails de aparência pessoal são marcados e podem
+          ficar fora da exportação.
         </p>
       </section>
 
       <!-- Privacidade: a faixa em azul de marca -->
       <section class="privacy" aria-labelledby="h-local">
         <div class="privacy-inner">
-          <h2 id="h-local">Seus leads ficam no seu navegador.</h2>
-          <ul class="triad">
-            <li>Sem servidor</li>
-            <li>Sem conta</li>
-            <li>Sem API paga</li>
-          </ul>
+          <h2 id="h-local">Onde os dados ficam.</h2>
           <p>
-            Não há telemetria nem envio a servidores. As únicas requisições são
-            as visitas aos sites das empresas, e só se você ativar essa opção. O
-            Chrome pede a permissão no momento em que você ativa.
+            Os leads são guardados no navegador. Não há servidor, conta nem
+            telemetria. As únicas requisições externas são as visitas aos sites
+            das empresas, e só quando a opção de buscar e-mail e WhatsApp nos
+            sites está ativada. O Chrome pede a permissão nesse momento.
           </p>
         </div>
       </section>
@@ -457,7 +487,7 @@
       <section class="band-section" id="instalar" aria-labelledby="h-instalar">
         <div class="split">
           <div class="split-media">
-            <h2 id="h-instalar">Instale em três passos.</h2>
+            <h2 id="h-instalar">Instalação.</h2>
             <p class="section-lead">
               A extensão roda descompactada e não está publicada na Chrome Web
               Store.
@@ -500,7 +530,7 @@
             <div class="actions">
               <a
                 class="btn btn-primary"
-                href="https://github.com/zerobertoo/leadmapper/releases/latest"
+                href="https://github.com/zerobertoo/leadmapper/releases/latest/download/leadmapper.zip"
               >
                 <svg
                   width="20"
@@ -517,7 +547,7 @@
                   <path d="m7 11 5 5 5-5" />
                   <path d="M5 20h14" />
                 </svg>
-                Baixar a última versão
+                Baixar leadmapper.zip
               </a>
               <a
                 class="btn btn-ghost"
@@ -537,8 +567,8 @@
 
       <!-- Limites -->
       <section class="limits" id="limites" aria-labelledby="h-limites">
-        <h2 id="h-limites">O que você precisa saber antes de usar.</h2>
-        <dl>
+        <h2 id="h-limites">Limites e cuidados.</h2>
+        <dl class="key">
           <div>
             <dt>Termos do Google</dt>
             <dd>
@@ -557,41 +587,43 @@
               respeite a LGPD e as regras de cada canal.
             </dd>
           </div>
-          <div>
-            <dt>O que não faz</dt>
-            <dd>
-              Não contorna captcha, não usa proxy e não coleta em ritmo que uma
-              pessoa não faria. Se o Google pedir verificação, resolva você
-              mesmo e tente mais tarde.
-            </dd>
-          </div>
-          <div>
-            <dt>Telefone</dt>
-            <dd>
-              A normalização de telefone e o cálculo de WhatsApp valem só para
-              números brasileiros (+55 e DDD).
-            </dd>
-          </div>
-          <div>
-            <dt>Maps em inglês</dt>
-            <dd>
-              A coleta com o Maps em inglês tem fallbacks, mas ainda não foi
-              validada no Maps real nesse idioma.
-            </dd>
-          </div>
-          <div>
-            <dt>Fora da loja</dt>
-            <dd>
-              Não há publicação na Chrome Web Store: a instalação é manual e as
-              atualizações também.
-            </dd>
-          </div>
         </dl>
+        <p class="no-do">
+          <strong>O que não faz.</strong> Não contorna captcha, não usa proxy e
+          não coleta em ritmo que uma pessoa não faria. Se o Google pedir
+          verificação, resolva você mesmo e tente mais tarde.
+        </p>
+        <details class="tech">
+          <summary>Detalhes técnicos</summary>
+          <dl>
+            <div>
+              <dt>Telefone</dt>
+              <dd>
+                A normalização de telefone e o cálculo de WhatsApp valem só para
+                números brasileiros (+55 e DDD).
+              </dd>
+            </div>
+            <div>
+              <dt>Maps em inglês</dt>
+              <dd>
+                A coleta com o Maps em inglês tem fallbacks, mas ainda não foi
+                validada no Maps real nesse idioma.
+              </dd>
+            </div>
+            <div>
+              <dt>Fora da loja</dt>
+              <dd>
+                Não há publicação na Chrome Web Store: a instalação é manual e
+                as atualizações também.
+              </dd>
+            </div>
+          </dl>
+        </details>
       </section>
     </main>
 
     <footer class="foot">
-      <a class="brand" href="#" aria-label="LeadMapper, voltar ao topo">
+      <a class="brand" href="./" aria-label="LeadMapper, voltar ao topo">
         <img src="logo.svg" width="28" height="28" alt="" />
         <span>LeadMapper</span>
       </a>

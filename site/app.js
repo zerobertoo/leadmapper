@@ -33,6 +33,7 @@ const counter = document.getElementById('contador');
 const startButton = document.getElementById('coletar');
 const pins = demo.querySelectorAll('.pin');
 const rows = demo.querySelectorAll('.row');
+const announcement = document.getElementById('anuncio');
 const stepDelay = 420;
 let timers = [];
 
@@ -43,9 +44,13 @@ function runCollection() {
   void demo.getBoundingClientRect();
   demo.classList.add('is-running');
   counter.textContent = 'Coletando…';
-  pins.forEach((_, index) => {
+  announcement.textContent = '';
+  // no celular parte dos pinos fica oculta; o contador acompanha os visíveis
+  const visiblePins = [...pins].filter((pin) => pin.getClientRects().length);
+  visiblePins.forEach((_, index) => {
     timers.push(setTimeout(() => {
       counter.textContent = `${index + 1} ${index === 0 ? 'lead' : 'leads'}`;
+      if (index === visiblePins.length - 1) announcement.textContent = `Coleta de exemplo concluída: ${index + 1} leads.`;
     }, 500 + index * stepDelay));
   });
 }
@@ -61,6 +66,4 @@ function highlight(number, on) {
   const number = element.dataset.n;
   element.addEventListener('mouseenter', () => highlight(number, true));
   element.addEventListener('mouseleave', () => highlight(number, false));
-  element.addEventListener('focus', () => highlight(number, true));
-  element.addEventListener('blur', () => highlight(number, false));
 });
