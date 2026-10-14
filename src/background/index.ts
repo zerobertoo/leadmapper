@@ -361,6 +361,9 @@ function isWellFormedEvent(event: ContentEvent): boolean {
   );
 }
 
+// eventos do content script entram um a um: um PROGRESS atrasado não pode passar à frente do DONE
+let eventChain: Promise<void> = Promise.resolve();
+
 chrome.runtime.onMessage.addListener(
   (message: PopupMessage | ContentEvent, sender, sendResponse: (reply?: StatusReply) => void) => {
     if (
@@ -372,7 +375,9 @@ chrome.runtime.onMessage.addListener(
       message.type === 'LOG'
     ) {
       // eventos de coleta só vêm de uma aba (o content script); o formato é conferido antes de gravar
-      if (sender.tab && isWellFormedEvent(message)) void handleContentEvent(message).catch(() => undefined);
+      if (sender.tab && isWellFormedEvent(message)) {
+        eventChain = eventChain.then(() => handleContentEvent(message)).catch(() => undefined);
+      }
       return false;
     }
     handlePopupMessage(message).then(sendResponse, (error: unknown) =>
