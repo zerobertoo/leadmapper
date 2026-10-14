@@ -2,7 +2,8 @@
   "manifest_version": 3,
   "name": "LeadMapper",
   "version": "0.1.0",
-  "description": "Transforma uma busca no Google Maps em uma lista de leads em CSV.",
+  "description": "__MSG_extensionDescription__",
+  "default_locale": "pt_BR",
   "permissions": [
     "storage",
     "unlimitedStorage",

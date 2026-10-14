@@ -11,111 +11,111 @@
       <h1>LeadMapper</h1>
 
       <section id="lgpd-notice" class="notice" hidden>
-        <p>
+        <p data-i18n="lgpdNotice">
           Use para prospecção de empresas. Priorize e-mails genéricos (contato@) e evite dados de pessoas
           físicas (LGPD). O Google Maps proíbe coleta automatizada: o uso é por sua conta e risco.
         </p>
-        <button id="lgpd-ack" type="button">Entendi</button>
+        <button id="lgpd-ack" type="button" data-i18n="lgpdAck">Entendi</button>
       </section>
 
       <p id="status" role="status"></p>
       <ul id="warnings" class="warnings" role="alert" hidden></ul>
 
       <ol id="first-steps" class="steps" hidden>
-        <li>Abra o Google Maps e pesquise, por exemplo, “clínica odontológica em Taubaté”.</li>
-        <li>Espere a lista de resultados aparecer.</li>
-        <li>Abra este painel e clique em “Iniciar coleta”.</li>
+        <li data-i18n="firstStep1">Abra o Google Maps e pesquise, por exemplo, “clínica odontológica em Taubaté”.</li>
+        <li data-i18n="firstStep2">Espere a lista de resultados aparecer.</li>
+        <li data-i18n="firstStep3">Abra este painel e clique em “Iniciar coleta”.</li>
       </ol>
 
       <div id="progress-block" hidden>
-        <progress id="progress" max="100" value="0" aria-label="Progresso da coleta"></progress>
+        <progress id="progress" max="100" value="0" aria-label="Progresso da coleta" data-i18n-aria-label="progressLabel"></progress>
         <p id="progress-text" class="progress-text"></p>
       </div>
 
       <dl id="counters" class="counters" hidden>
-        <div><dt>Processadas</dt><dd id="count-progress">0</dd></div>
-        <div><dt>Com telefone</dt><dd id="count-phone">0</dd></div>
-        <div><dt>Com e-mail ou WhatsApp</dt><dd id="count-contact">0</dd></div>
+        <div><dt data-i18n="countProcessed">Processadas</dt><dd id="count-progress">0</dd></div>
+        <div><dt data-i18n="countWithPhone">Com telefone</dt><dd id="count-phone">0</dd></div>
+        <div><dt data-i18n="countWithContact">Com e-mail ou WhatsApp</dt><dd id="count-contact">0</dd></div>
       </dl>
       <details id="more-counters" class="more" hidden>
-        <summary>Mais números</summary>
+        <summary data-i18n="moreNumbers">Mais números</summary>
         <dl class="counters small">
-          <div><dt>Encontradas no Maps</dt><dd id="count-found">0</dd></div>
-          <div><dt>Com e-mail</dt><dd id="count-email">0</dd></div>
-          <div><dt>Com WhatsApp</dt><dd id="count-whatsapp">0</dd></div>
-          <div><dt>Sites visitados</dt><dd id="count-sites">0</dd></div>
-          <div><dt>Sites que não abriram</dt><dd id="count-site-errors">0</dd></div>
-          <div><dt>Itens que falharam</dt><dd id="count-failures">0</dd></div>
-          <div><dt>Já estavam na lista</dt><dd id="count-skipped">0</dd></div>
-          <div><dt>Repetidos mesclados</dt><dd id="count-duplicates">0</dd></div>
+          <div><dt data-i18n="countFound">Encontradas no Maps</dt><dd id="count-found">0</dd></div>
+          <div><dt data-i18n="countWithEmail">Com e-mail</dt><dd id="count-email">0</dd></div>
+          <div><dt data-i18n="countWithWhatsapp">Com WhatsApp</dt><dd id="count-whatsapp">0</dd></div>
+          <div><dt data-i18n="countSites">Sites visitados</dt><dd id="count-sites">0</dd></div>
+          <div><dt data-i18n="countSiteErrors">Sites que não abriram</dt><dd id="count-site-errors">0</dd></div>
+          <div><dt data-i18n="countFailures">Itens que falharam</dt><dd id="count-failures">0</dd></div>
+          <div><dt data-i18n="countSkipped">Já estavam na lista</dt><dd id="count-skipped">0</dd></div>
+          <div><dt data-i18n="countDuplicates">Repetidos mesclados</dt><dd id="count-duplicates">0</dd></div>
         </dl>
       </details>
       <p id="total" class="total"></p>
-      <button id="open-list" type="button" hidden>Abrir lista de leads</button>
+      <button id="open-list" type="button" data-i18n="openList" hidden>Abrir lista de leads</button>
 
       <section id="export-section" class="export" hidden>
         <label>
-          Exportar
+          <span data-i18n="exportLabel">Exportar</span>
           <select id="export-scope">
-            <option value="all">Toda a lista</option>
-            <option value="current">Só a busca atual</option>
+            <option value="all" data-i18n="scopeAll">Toda a lista</option>
+            <option value="current" data-i18n="scopeCurrent">Só a busca atual</option>
           </select>
         </label>
         <label class="checkbox">
           <input id="discard-no-contact" type="checkbox" />
-          <span>Descartar leads sem nenhum contato <span id="no-contact-count"></span></span>
+          <span><span data-i18n="discardNoContact">Descartar leads sem nenhum contato</span> <span id="no-contact-count"></span></span>
         </label>
         <label class="checkbox">
           <input id="generic-emails-only" type="checkbox" />
-          <span>Só e-mails genéricos (contato@, vendas@…)</span>
+          <span data-i18n="genericEmailsOnly">Só e-mails genéricos (contato@, vendas@…)</span>
         </label>
         <div class="actions">
-          <button id="export" type="button">Exportar CSV</button>
-          <button id="clear" type="button">Limpar lista</button>
+          <button id="export" type="button" data-i18n="exportCsv">Exportar CSV</button>
+          <button id="clear" type="button" data-i18n="clearList">Limpar lista</button>
         </div>
       </section>
 
       <section id="options" class="options">
         <label>
-          Máximo de empresas por coleta
+          <span data-i18n="limitLabel">Máximo de empresas por coleta</span>
           <input id="limit" type="number" min="1" max="500" step="1" value="120" />
         </label>
         <label>
-          Velocidade
+          <span data-i18n="speedLabel">Velocidade</span>
           <select id="speed">
-            <option value="slow">Lenta</option>
-            <option value="normal" selected>Normal</option>
-            <option value="fast">Rápida</option>
+            <option value="slow" data-i18n="speedSlow">Lenta</option>
+            <option value="normal" data-i18n="speedNormal" selected>Normal</option>
+            <option value="fast" data-i18n="speedFast">Rápida</option>
           </select>
         </label>
         <label class="checkbox">
           <input id="enrich-sites" type="checkbox" checked />
-          <span>Buscar e-mail e WhatsApp nos sites</span>
+          <span data-i18n="enrichSites">Buscar e-mail e WhatsApp nos sites</span>
         </label>
       </section>
 
       <div class="actions">
         <button id="start" type="button" disabled>Iniciar coleta</button>
-        <button id="pause" type="button" hidden>Pausar</button>
-        <button id="resume" type="button" hidden>Retomar</button>
-        <button id="cancel" type="button" hidden>Cancelar</button>
+        <button id="pause" type="button" data-i18n="pause" hidden>Pausar</button>
+        <button id="resume" type="button" data-i18n="resume" hidden>Retomar</button>
+        <button id="cancel" type="button" data-i18n="cancel" hidden>Cancelar</button>
       </div>
 
       <details class="more diagnostic">
-        <summary>Diagnóstico</summary>
-        <p>Copia um resumo técnico para você enviar quando algo der errado. Não leva telefones, e-mails nem endereços; o registro pode citar nomes de empresas.</p>
-        <button id="copy-diagnostic" type="button">Copiar diagnóstico</button>
+        <summary data-i18n="diagnosticTitle">Diagnóstico</summary>
+        <p data-i18n="diagnosticHelp">Copia um resumo técnico para você enviar quando algo der errado. Não leva telefones, e-mails nem endereços; o registro pode citar nomes de empresas.</p>
+        <button id="copy-diagnostic" type="button" data-i18n="copyDiagnostic">Copiar diagnóstico</button>
       </details>
     </main>
 
     <dialog id="confirm-clear" closedby="any" aria-labelledby="confirm-clear-title">
       <form method="dialog">
-        <h2 id="confirm-clear-title">Apagar todos os leads?</h2>
+        <h2 id="confirm-clear-title" data-i18n="clearTitle">Apagar todos os leads?</h2>
         <p id="confirm-clear-text"></p>
         <div class="actions">
-          <button type="submit" value="cancel" autofocus>Cancelar</button>
-          <button type="submit" value="export">Exportar antes</button>
-          <button type="submit" value="clear" class="danger">Apagar tudo</button>
+          <button type="submit" value="cancel" data-i18n="cancel" autofocus>Cancelar</button>
+          <button type="submit" value="export" data-i18n="exportFirst">Exportar antes</button>
+          <button type="submit" value="clear" class="danger" data-i18n="clearAll">Apagar tudo</button>
         </div>
       </form>
     </dialog>

@@ -1,4 +1,5 @@
 import { placeKey } from '../shared/domain';
+import { t } from '../shared/i18n';
 import {
   EMPTY_PROGRESS,
   STORAGE_KEYS,
@@ -31,10 +32,8 @@ const MAX_IDLE_SCROLLS = 3;
 const NEW_CARDS_WAIT_MS = 5000;
 // falhas seguidas indicam seletor quebrado: para cedo em vez de gastar 16 s por cartão até o fim da lista
 const MAX_CONSECUTIVE_FAILURES = 5;
-const BLOCKED_MESSAGE =
-  'O Google pediu uma verificação. Resolva-a na aba do Maps e inicie a coleta de novo.';
-const MAPS_CHANGED_MESSAGE =
-  'O Google mudou a página do Maps; atualize a extensão ou tente de novo.';
+const BLOCKED_MESSAGE = t('blockedByGoogle');
+const MAPS_CHANGED_MESSAGE = t('mapsChanged');
 
 // faixa de pausa aleatória (ms) entre ações, por velocidade
 const DELAY_RANGE: Record<SpeedMode, [number, number]> = {

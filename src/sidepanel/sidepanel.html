@@ -3,96 +3,96 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Leads · LeadMapper</title>
+    <title data-i18n="sidepanelTitle">Leads · LeadMapper</title>
     <link rel="stylesheet" href="./sidepanel.css" />
   </head>
   <body>
     <main>
       <header>
-        <h1>Leads</h1>
+        <h1 data-i18n="leadsHeading">Leads</h1>
         <p id="summary" role="status"></p>
       </header>
 
-      <search id="filters" class="filters" aria-label="Filtros da lista">
+      <search id="filters" class="filters" aria-label="Filtros da lista" data-i18n-aria-label="filtersLabel">
         <label class="wide">
-          Buscar
-          <input id="text" type="search" placeholder="nome, bairro, telefone, e-mail, tag" autocomplete="off" />
+          <span data-i18n="searchLabel">Buscar</span>
+          <input id="text" type="search" placeholder="nome, bairro, telefone, e-mail, tag" data-i18n-placeholder="searchPlaceholder" autocomplete="off" />
         </label>
         <label>
-          Busca de origem
+          <span data-i18n="originSearchLabel">Busca de origem</span>
           <select id="search"></select>
         </label>
         <label>
-          Status
+          <span data-i18n="statusLabel">Status</span>
           <select id="status"></select>
         </label>
         <label>
-          Ordenar por
+          <span data-i18n="sortLabel">Ordenar por</span>
           <select id="sort">
-            <option value="recentes">Mais recentes</option>
-            <option value="nome">Nome (A–Z)</option>
-            <option value="nota">Nota</option>
-            <option value="avaliacoes">Avaliações</option>
+            <option value="recentes" data-i18n="sortRecent">Mais recentes</option>
+            <option value="nome" data-i18n="sortName">Nome (A–Z)</option>
+            <option value="nota" data-i18n="sortRating">Nota</option>
+            <option value="avaliacoes" data-i18n="sortReviews">Avaliações</option>
           </select>
         </label>
         <label class="checkbox">
           <input id="only-contact" type="checkbox" />
-          <span>Só com contato</span>
+          <span data-i18n="onlyWithContact">Só com contato</span>
         </label>
       </search>
 
-      <section class="bulk" aria-label="Ações na lista">
+      <section class="bulk" aria-label="Ações na lista" data-i18n-aria-label="bulkLabel">
         <label class="checkbox">
           <input id="select-all" type="checkbox" />
           <span id="select-all-label">Selecionar os filtrados</span>
         </label>
         <div class="bulk-row">
           <label>
-            Marcar como
+            <span data-i18n="markAs">Marcar como</span>
             <select id="bulk-status"></select>
           </label>
-          <button id="apply-status" type="button">Aplicar</button>
+          <button id="apply-status" type="button" data-i18n="apply">Aplicar</button>
         </div>
         <div class="bulk-row">
           <label>
-            Exportar
+            <span data-i18n="exportLabel">Exportar</span>
             <select id="export-format">
-              <option value="csv">CSV (Excel)</option>
-              <option value="json">JSON</option>
-              <option value="vcf">vCard (contatos)</option>
+              <option value="csv" data-i18n="formatCsv">CSV (Excel)</option>
+              <option value="json" data-i18n="formatJson">JSON</option>
+              <option value="vcf" data-i18n="formatVcard">vCard (contatos)</option>
             </select>
           </label>
-          <button id="export" type="button">Exportar</button>
+          <button id="export" type="button" data-i18n="exportLabel">Exportar</button>
         </div>
-        <button id="remove" type="button" class="danger">Remover selecionados</button>
+        <button id="remove" type="button" class="danger" data-i18n="removeSelected">Remover selecionados</button>
       </section>
 
       <div class="table-wrapper">
         <table>
-          <caption class="visually-hidden">Leads coletados</caption>
+          <caption class="visually-hidden" data-i18n="tableCaption">Leads coletados</caption>
           <thead>
             <tr>
-              <th scope="col">Empresa</th>
-              <th scope="col">Telefone</th>
-              <th scope="col">E-mail</th>
-              <th scope="col">Status</th>
-              <th scope="col">Tags</th>
+              <th scope="col" data-i18n="colCompany">Empresa</th>
+              <th scope="col" data-i18n="colPhone">Telefone</th>
+              <th scope="col" data-i18n="colEmail">E-mail</th>
+              <th scope="col" data-i18n="statusLabel">Status</th>
+              <th scope="col" data-i18n="colTags">Tags</th>
             </tr>
           </thead>
           <tbody id="rows"></tbody>
         </table>
       </div>
-      <p id="empty" class="empty" hidden>Nenhum lead com esses filtros.</p>
+      <p id="empty" class="empty" data-i18n="noLeadsWithFilters" hidden>Nenhum lead com esses filtros.</p>
       <button id="more" type="button" hidden>Mostrar mais</button>
     </main>
 
     <dialog id="confirm-remove" closedby="any" aria-labelledby="confirm-remove-title">
       <form method="dialog">
-        <h2 id="confirm-remove-title">Remover leads?</h2>
+        <h2 id="confirm-remove-title" data-i18n="removeTitle">Remover leads?</h2>
         <p id="confirm-remove-text"></p>
         <div class="actions">
-          <button type="submit" value="cancel" autofocus>Cancelar</button>
-          <button type="submit" value="remove" class="danger">Remover</button>
+          <button type="submit" value="cancel" data-i18n="cancel" autofocus>Cancelar</button>
+          <button type="submit" value="remove" class="danger" data-i18n="remove">Remover</button>
         </div>
       </form>
     </dialog>

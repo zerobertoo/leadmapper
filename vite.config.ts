@@ -26,6 +26,11 @@ const emitManifest: Plugin = {
     const manifest = JSON.parse(readFileSync(resolve(import.meta.dirname, 'manifest.json'), 'utf-8'));
     const pkg = JSON.parse(readFileSync(resolve(import.meta.dirname, 'package.json'), 'utf-8'));
     manifest.version = pkg.version;
+    // só a descrição da extensão passa por _locales; o resto da interface usa src/shared/i18n
+    for (const language of ['pt_BR', 'en']) {
+      const fileName = `_locales/${language}/messages.json`;
+      this.emitFile({ type: 'asset', fileName, source: readFileSync(resolve(import.meta.dirname, fileName), 'utf-8') });
+    }
     this.emitFile({ type: 'asset', fileName: 'manifest.json', source: `${JSON.stringify(manifest, null, 2)}
 ` });
   },

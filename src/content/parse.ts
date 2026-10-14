@@ -1,4 +1,5 @@
 import { placeId, placeKey } from '../shared/domain';
+import { t, type MessageKey } from '../shared/i18n';
 import type { Lead } from '../shared/types';
 import { SELECTORS } from './selectors';
 
@@ -155,10 +156,10 @@ const MAX_HOURS_LENGTH = 300;
 
 /** Campos que, vazios em quase todos os itens, indicam seletor quebrado. */
 const WATCHED_FIELDS = [
-  ['categoria', 'categoria'],
-  ['endereco', 'endereço'],
-  ['nota', 'nota'],
-] as const satisfies readonly (readonly [keyof Lead, string])[];
+  ['categoria', 'fieldCategory'],
+  ['endereco', 'fieldAddress'],
+  ['nota', 'fieldRating'],
+] as const satisfies readonly (readonly [keyof Lead, MessageKey])[];
 
 const MIN_ITEMS_FOR_WARNING = 10;
 const MAX_FILLED_RATIO = 0.2;
@@ -170,7 +171,7 @@ export function fieldWarnings(leads: Lead[]): string[] {
   for (const [field, label] of WATCHED_FIELDS) {
     const filled = leads.filter((lead) => lead[field] !== '' && lead[field] !== null).length;
     if (filled / leads.length <= MAX_FILLED_RATIO) {
-      warnings.push(`O campo "${label}" veio vazio em ${leads.length - filled} de ${leads.length} itens; o Maps pode ter mudado.`);
+      warnings.push(t('fieldEmptyWarning', { field: t(label), empty: leads.length - filled, total: leads.length }));
     }
   }
   return warnings;

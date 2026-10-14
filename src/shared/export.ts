@@ -1,3 +1,4 @@
+import { t } from './i18n';
 import { parseBrazilianPhone } from './phone';
 import type { Lead } from './types';
 
@@ -27,7 +28,7 @@ function vcardOf(lead: Lead): string[] {
   if (lead.endereco) lines.push(`ADR;TYPE=WORK:;;${escapeVcard(lead.endereco)};;;;`);
   if (lead.categoria) lines.push(`TITLE:${escapeVcard(lead.categoria)}`);
   if (lead.tags?.length) lines.push(`CATEGORIES:${lead.tags.map(escapeVcard).join(',')}`);
-  lines.push(`NOTE:${escapeVcard(`Busca: ${lead.busca_origem}`)}`);
+  lines.push(`NOTE:${escapeVcard(t('vcardSearchNote', { search: lead.busca_origem }))}`);
   lines.push('END:VCARD');
   return lines;
 }

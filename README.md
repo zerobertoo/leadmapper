@@ -42,6 +42,17 @@ npm run build
 
 Depois de qualquer alteração no código, rode `npm run build` e clique em recarregar na extensão (e recarregue a aba do Maps).
 
+## Idioma
+
+A interface segue o idioma do navegador: português do Brasil quando ele está em `pt-*` e inglês nos demais. Não há seletor manual. Em inglês, o CSV usa cabeçalhos em inglês, vírgula como separador e ponto decimal.
+
+Limites da versão atual:
+
+- A normalização de telefone e o cálculo de WhatsApp são só para números brasileiros (+55 e DDD).
+- A coleta com o Google Maps em inglês usa seletores estáveis (`data-item-id`) e tem fallbacks para textos em inglês, mas ainda não foi validada no Maps real nesse idioma.
+
+Para adicionar ou ajustar textos, edite `src/shared/i18n/pt.ts` e `src/shared/i18n/en.ts`; o teste `tests/i18n.test.ts` garante que os dois têm as mesmas chaves.
+
 ## Como usar
 
 1. Abra o Google Maps e pesquise, por exemplo, "clínica odontológica em Taubaté". Espere a lista de resultados aparecer.

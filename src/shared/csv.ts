@@ -1,21 +1,25 @@
 import { isNonWebsite } from './domain';
+import { locale, t } from './i18n';
 import { classifyEmailType } from './extract';
 import { parseBrazilianPhone } from './phone';
 import { CONTACT_STATUS_LABELS, type Lead } from './types';
 
 const BOM = '﻿';
-const SEPARATOR = ';';
+// planilhas em pt-BR usam `;` e vírgula decimal; em inglês, `,` e ponto
+const SEPARATOR = locale === 'pt' ? ';' : ',';
+const NEEDS_QUOTES = new RegExp(`["${SEPARATOR}\\r\\n]`);
 const LINE_BREAK = '\r\n';
 
 export const CSV_HEADERS = [
-  'Nome', 'Categoria', 'Telefone', 'Celular', 'WhatsApp', 'E-mail', 'Site', 'Endereço',
-  'Nota', 'Avaliações', 'Instagram', 'Facebook', 'Busca de origem', 'Link do Maps', 'Data da coleta',
+  t('csvName'), t('csvCategory'), t('csvPhone'), t('csvMobile'), t('csvWhatsapp'), t('csvEmail'), t('csvSite'),
+  t('csvAddress'), t('csvRating'), t('csvReviews'), t('csvInstagram'), t('csvFacebook'), t('csvOriginSearch'),
+  t('csvMapsLink'), t('csvCollectedAt'),
   // colunas novas entram sempre no fim, para não quebrar planilhas existentes
-  'Tipo de e-mail',
-  'Status',
-  'Tags',
-  'Horário',
-  'Outras redes',
+  t('csvEmailType'),
+  t('csvStatus'),
+  t('csvTags'),
+  t('csvHours'),
+  t('csvOtherNetworks'),
 ];
 
 // números como +55 (12) 99123-4567 ou (12) 3631-0000, com ou sem vírgula, não são fórmula;
@@ -32,7 +36,7 @@ export function escapeCell(value: string): string {
   // o Excel ignora espaços antes do gatilho de fórmula
   const trimmed = text.trimStart();
   if (/^[=+\-@\t\r]/.test(trimmed) && !PHONE_LIKE.test(trimmed)) text = `'${text}`;
-  return /[";\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+  return NEEDS_QUOTES.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
 const pad = (value: number) => String(value).padStart(2, '0');
@@ -56,7 +60,8 @@ function formatWhatsapp(e164: string): string {
   return phone ? `+55 ${phone.formatted}` : e164;
 }
 
-const formatNumber = (value: number | null) => (value === null ? '' : String(value).replace('.', ','));
+const formatNumber = (value: number | null) =>
+  value === null ? '' : String(value).replace('.', locale === 'pt' ? ',' : '.');
 
 function socialLink(lead: Lead, domain: string): string {
   return lead.redes_sociais.find((url) => url.toLowerCase().includes(domain)) ?? '';
@@ -68,7 +73,7 @@ function toRow(lead: Lead): string[] {
     lead.nome,
     lead.categoria,
     phone?.formatted ?? lead.telefone,
-    lead.eh_celular ? 'sim' : 'não',
+    lead.eh_celular ? t('yes') : t('no'),
     lead.whatsapp.map(formatWhatsapp).join(', '),
     lead.emails.join(', '),
     // perfil de rede social e link de WhatsApp saem nas colunas próprias
@@ -81,7 +86,7 @@ function toRow(lead: Lead): string[] {
     lead.busca_origem,
     lead.url_maps,
     formatCollectedAt(lead.coletado_em),
-    lead.emails.map((email) => (classifyEmailType(email) === 'generico' ? 'genérico' : 'pessoal')).join(', '),
+    lead.emails.map((email) => (classifyEmailType(email) === 'generico' ? t('emailGeneric') : t('emailPersonal'))).join(', '),
     CONTACT_STATUS_LABELS[lead.status_contato ?? 'novo'],
     (lead.tags ?? []).join(', '),
     lead.horario ?? '',

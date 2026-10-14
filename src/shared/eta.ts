@@ -1,3 +1,5 @@
+import { t } from './i18n';
+
 const MIN_ITEMS_FOR_ESTIMATE = 10;
 
 /**
@@ -21,7 +23,7 @@ export function estimateRemainingMs(input: {
 /** "menos de 1 min", "≈ 3 min", "≈ 1 h 5 min" */
 export function formatRemaining(ms: number): string {
   const minutes = Math.ceil(ms / 60_000);
-  if (minutes <= 1) return 'menos de 1 min';
-  if (minutes < 60) return `≈ ${minutes} min`;
-  return `≈ ${Math.floor(minutes / 60)} h ${minutes % 60} min`;
+  if (minutes <= 1) return t('lessThanMinute');
+  if (minutes < 60) return t('approxMinutes', { n: minutes });
+  return t('approxHours', { h: Math.floor(minutes / 60), m: minutes % 60 });
 }

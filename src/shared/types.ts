@@ -1,3 +1,5 @@
+import { t } from './i18n';
+
 /** Comandos de controle da coleta, enviados do popup até o content script. */
 export type CollectionCommand = 'START' | 'PAUSE' | 'RESUME' | 'CANCEL';
 
@@ -73,10 +75,10 @@ export type SourcedField =
 export type ContactStatus = 'novo' | 'contatado' | 'sem_interesse' | 'cliente';
 
 export const CONTACT_STATUS_LABELS: Record<ContactStatus, string> = {
-  novo: 'Novo',
-  contatado: 'Contatado',
-  sem_interesse: 'Sem interesse',
-  cliente: 'Cliente',
+  novo: t('statusNew'),
+  contatado: t('statusContacted'),
+  sem_interesse: t('statusNotInterested'),
+  cliente: t('statusCustomer'),
 };
 
 /** Campos do lead que o usuário edita (status e tags). */

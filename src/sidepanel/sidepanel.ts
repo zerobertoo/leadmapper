@@ -1,5 +1,6 @@
 import { exportFileName, leadsToCsv, selectLeadsForExport } from '../shared/csv';
 import { leadsToJson, leadsToVcard } from '../shared/export';
+import { applyI18n, t } from '../shared/i18n';
 import {
   EMPTY_FILTER,
   filterLeads,
@@ -22,6 +23,8 @@ import {
   type PopupMessage,
   type PopupOptions,
 } from '../shared/types';
+
+applyI18n();
 
 const PAGE_SIZE = 50;
 const RENDER_THROTTLE_MS = 250;
@@ -67,7 +70,7 @@ async function send(message: PopupMessage): Promise<void> {
   try {
     await chrome.runtime.sendMessage(message);
   } catch (error) {
-    summary.textContent = `Não consegui salvar a alteração (${error instanceof Error ? error.message : String(error)}). Tente de novo.`;
+    summary.textContent = t('saveFailed', { message: error instanceof Error ? error.message : String(error) });
   }
 }
 
@@ -96,8 +99,8 @@ function fillStatusOptions(select: HTMLSelectElement, firstLabel?: string): void
 function fillSearchOptions(): void {
   const previous = searchSelect.value;
   searchSelect.replaceChildren(
-    option('', `Todas (${allLeads.length})`),
-    ...searchesOf(allLeads).map(({ busca, total }) => option(busca, `${busca || '(sem busca)'} (${total})`)),
+    option('', t('allSearches', { n: allLeads.length })),
+    ...searchesOf(allLeads).map(({ busca, total }) => option(busca, `${busca || t('noSearch')} (${total})`)),
   );
   searchSelect.value = [...searchSelect.options].some((item) => item.value === previous) ? previous : '';
 }
@@ -120,7 +123,7 @@ function buildRow(lead: Lead): HTMLTableRowElement {
   const checkbox = document.createElement('input');
   checkbox.type = 'checkbox';
   checkbox.checked = selected.has(lead.id);
-  checkbox.setAttribute('aria-label', `Selecionar ${lead.nome}`);
+  checkbox.setAttribute('aria-label', t('selectLead', { name: lead.nome }));
   checkbox.addEventListener('change', () => {
     if (checkbox.checked) selected.add(lead.id);
     else selected.delete(lead.id);
@@ -141,7 +144,7 @@ function buildRow(lead: Lead): HTMLTableRowElement {
       href: mapsUrl,
       target: '_blank',
       rel: 'noopener noreferrer',
-      textContent: 'Abrir no Maps',
+      textContent: t('openInMaps'),
     });
     const linkLine = document.createElement('small');
     linkLine.append(link);
@@ -153,12 +156,12 @@ function buildRow(lead: Lead): HTMLTableRowElement {
   header.append(company);
 
   const phone = parseBrazilianPhone(lead.telefone)?.formatted ?? lead.telefone;
-  const whatsapp = lead.whatsapp.length > 0 ? `WhatsApp: ${lead.whatsapp.join(', ')}` : '';
-  const phoneCell = cell('Telefone', phone || '—');
+  const whatsapp = lead.whatsapp.length > 0 ? t('whatsappPrefix', { numbers: lead.whatsapp.join(', ') }) : '';
+  const phoneCell = cell(t('colPhone'), phone || '—');
   if (whatsapp) phoneCell.append(Object.assign(document.createElement('small'), { textContent: whatsapp }));
 
   const statusField = document.createElement('select');
-  statusField.setAttribute('aria-label', `Status de ${lead.nome}`);
+  statusField.setAttribute('aria-label', t('statusOf', { name: lead.nome }));
   fillStatusOptions(statusField);
   statusField.value = statusOf(lead);
   statusField.addEventListener('change', () => {
@@ -168,8 +171,8 @@ function buildRow(lead: Lead): HTMLTableRowElement {
   const tagsField = document.createElement('input');
   tagsField.type = 'text';
   tagsField.value = (lead.tags ?? []).join(', ');
-  tagsField.placeholder = 'tag, outra tag';
-  tagsField.setAttribute('aria-label', `Tags de ${lead.nome}`);
+  tagsField.placeholder = t('tagsPlaceholder');
+  tagsField.setAttribute('aria-label', t('tagsOf', { name: lead.nome }));
   tagsField.addEventListener('change', () => {
     void edit([lead.id], { tags: tagsField.value.split(',') });
   });
@@ -177,9 +180,9 @@ function buildRow(lead: Lead): HTMLTableRowElement {
   row.append(
     header,
     phoneCell,
-    cell('E-mail', lead.emails.join(', ') || '—'),
-    cell('Status', statusField),
-    cell('Tags', tagsField),
+    cell(t('colEmail'), lead.emails.join(', ') || '—'),
+    cell(t('statusLabel'), statusField),
+    cell(t('colTags'), tagsField),
   );
   return row;
 }
@@ -190,9 +193,9 @@ function updateBulk(): void {
   selectAll.checked = visibleIds.length > 0 && chosen === visibleIds.length;
   selectAll.indeterminate = chosen > 0 && chosen < visibleIds.length;
   selectAllLabel.textContent =
-    chosen > 0 ? `${chosen} selecionados` : `Selecionar os ${visibleIds.length} filtrados`;
+    chosen > 0 ? t('selectedCount', { n: chosen }) : t('selectFiltered', { n: visibleIds.length });
   applyStatus.disabled = removeButton.disabled = chosen === 0;
-  exportButton.textContent = chosen > 0 ? `Exportar ${chosen}` : `Exportar ${visibleIds.length}`;
+  exportButton.textContent = t('exportCount', { n: chosen > 0 ? chosen : visibleIds.length });
   exportButton.disabled = visibleIds.length === 0;
 }
 
@@ -204,11 +207,11 @@ function render(): void {
 
   fillSearchOptions();
   const leads = filteredLeads();
-  summary.textContent = `${leads.length} de ${allLeads.length} leads`;
+  summary.textContent = t('leadsOfTotal', { shown: leads.length, total: allLeads.length });
   rows.replaceChildren(...leads.slice(0, visibleCount).map(buildRow));
   empty.hidden = leads.length > 0;
   moreButton.hidden = leads.length <= visibleCount;
-  moreButton.textContent = `Mostrar mais (${leads.length - visibleCount})`;
+  moreButton.textContent = t('showMoreCount', { n: leads.length - visibleCount });
   updateBulk();
 }
 
@@ -260,7 +263,7 @@ function download(name: string, content: string, mime: string): void {
 async function exportLeads(): Promise<void> {
   const leads = await leadsToExport();
   if (leads.length === 0) {
-    summary.textContent = 'Nenhum lead para exportar com essas opções.';
+    summary.textContent = t('nothingToExport');
     return;
   }
   const now = new Date();
@@ -274,12 +277,12 @@ async function exportLeads(): Promise<void> {
     default:
       download(exportFileName(now), leadsToCsv(leads), 'text/csv');
   }
-  summary.textContent = `${leads.length} leads exportados.`;
+  summary.textContent = t('exported', { n: leads.length });
 }
 
 function askBeforeRemoving(count: number): Promise<boolean> {
   $('#confirm-remove-text').textContent =
-    `${count} ${count === 1 ? 'lead será removido' : 'leads serão removidos'} da lista. Isso não pode ser desfeito.`;
+    t(count === 1 ? 'removeOne' : 'removeMany', { n: count });
   return new Promise((resolve) => {
     removeDialog.addEventListener('close', () => resolve(removeDialog.returnValue === 'remove'), { once: true });
     removeDialog.returnValue = 'cancel';
@@ -331,6 +334,6 @@ chrome.storage.onChanged.addListener((changes) => {
   if (STORAGE_KEYS.leads in changes) void reload().then((fresh) => fresh && scheduleRender());
 });
 
-fillStatusOptions(statusSelect, 'Todos');
+fillStatusOptions(statusSelect, t('allStatuses'));
 fillStatusOptions(bulkStatus);
 void reload().then((fresh) => fresh && render());

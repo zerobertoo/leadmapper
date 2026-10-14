@@ -1,5 +1,6 @@
 import { exportFileName, hasContact, leadsToCsv, selectLeadsForExport } from '../shared/csv';
 import { readLog } from '../shared/diagnostic';
+import { applyI18n, t } from '../shared/i18n';
 import { isNonWebsite } from '../shared/domain';
 import { estimateRemainingMs, formatRemaining } from '../shared/eta';
 import { readDuplicates, readLeads, readProgress } from '../shared/storage';
@@ -14,6 +15,8 @@ import {
   type SpeedMode,
   type StatusReply,
 } from '../shared/types';
+
+applyI18n();
 
 const LGPD_ACK_KEY = 'lgpdAck';
 const RENDER_THROTTLE_MS = 250;
@@ -108,7 +111,7 @@ function updateExportSection(): void {
 function render(reply: StatusReply): void {
   const { start, pause, resume, cancel } = buttons;
   start.hidden = false;
-  start.textContent = 'Iniciar coleta';
+  start.textContent = t('start');
   pause.hidden = resume.hidden = cancel.hidden = true;
   start.disabled = true;
   countersElement.hidden = true;
@@ -129,12 +132,12 @@ function render(reply: StatusReply): void {
   };
 
   if (reply.kind === 'outside_maps') {
-    statusElement.textContent = 'Abra uma busca no Google Maps para começar.';
+    statusElement.textContent = t('statusOutsideMaps');
     return;
   }
   if (reply.kind === 'error') {
-    statusElement.textContent = `Não consegui falar com a aba do Maps (${reply.message}). Recarregue a aba e tente de novo.`;
-    start.textContent = 'Tentar de novo';
+    statusElement.textContent = t('statusCommError', { message: reply.message });
+    start.textContent = t('retry');
     start.disabled = false;
     start.dataset.retry = 'status';
     return;
@@ -143,21 +146,21 @@ function render(reply: StatusReply): void {
 
   switch (reply.state) {
     case 'running':
-      statusElement.textContent = 'Coletando…';
+      statusElement.textContent = t('statusRunning');
       start.hidden = true;
       pause.hidden = cancel.hidden = false;
       progressBlock.hidden = false;
       showCounters();
       break;
     case 'enriching':
-      statusElement.textContent = 'Buscando e-mails e WhatsApp nos sites…';
+      statusElement.textContent = t('statusEnriching');
       start.hidden = true;
       pause.hidden = cancel.hidden = false;
       progressBlock.hidden = false;
       showCounters();
       break;
     case 'paused':
-      statusElement.textContent = 'Coleta pausada.';
+      statusElement.textContent = t('statusPaused');
       start.hidden = true;
       resume.hidden = cancel.hidden = false;
       progressBlock.hidden = false;
@@ -165,23 +168,23 @@ function render(reply: StatusReply): void {
       break;
     case 'done':
     case 'cancelled':
-      statusElement.textContent = reply.state === 'done' ? 'Coleta concluída.' : 'Coleta cancelada.';
-      start.textContent = 'Nova coleta';
+      statusElement.textContent = reply.state === 'done' ? t('statusDone') : t('statusCancelled');
+      start.textContent = t('newCollection');
       start.disabled = !reply.hasResults;
       showCounters();
       break;
     case 'error':
-      statusElement.textContent = reply.errorMessage ?? 'A coleta falhou. Tente de novo.';
-      start.textContent = 'Tentar de novo';
+      statusElement.textContent = reply.errorMessage ?? t('statusFailed');
+      start.textContent = t('retry');
       start.disabled = !reply.hasResults;
       showCounters();
       break;
     default:
       if (reply.hasResults) {
-        statusElement.textContent = 'Pronto para coletar.';
+        statusElement.textContent = t('statusReady');
         start.disabled = false;
       } else {
-        statusElement.textContent = 'Faça uma busca no Maps e espere a lista de resultados aparecer.';
+        statusElement.textContent = t('statusSearchFirst');
       }
   }
   void renderCounters();
@@ -216,8 +219,8 @@ async function renderCounters(): Promise<void> {
   setText('#count-failures', progress.failures);
   setText('#count-skipped', progress.skipped);
   setText('#count-duplicates', duplicates);
-  totalElement.textContent = `Leads salvos: ${leads.length}`;
-  setText('#no-contact-count', `(${leads.filter((lead) => !hasContact(lead)).length} na lista)`);
+  totalElement.textContent = t('totalSaved', { n: leads.length });
+  setText('#no-contact-count', t('noContactCount', { n: leads.filter((lead) => !hasContact(lead)).length }));
 
   renderProgress(progress, visited, withSite.length, (stored[STORAGE_KEYS.startedAt] as number | undefined) ?? 0);
 
@@ -239,15 +242,15 @@ function renderProgress(
   if (currentState === 'enriching') {
     progressBar.max = Math.max(totalSites, 1);
     progressBar.value = visitedSites;
-    progressText.textContent = `Sites: ${visitedSites} de ${totalSites}`;
+    progressText.textContent = t('sitesProgress', { visited: visitedSites, total: totalSites });
     return;
   }
   progressBar.max = Math.max(progress.found, 1);
   progressBar.value = progress.processed;
   const remaining = estimateRemainingMs({ ...progress, startedAt, now: Date.now() });
-  const parts = [`${progress.processed} de ${progress.found}`];
+  const parts = [t('itemsProgress', { done: progress.processed, found: progress.found })];
   if (progress.current) parts.push(progress.current);
-  if (remaining !== null && currentState === 'running') parts.push(`${formatRemaining(remaining)} restantes`);
+  if (remaining !== null && currentState === 'running') parts.push(t('remaining', { time: formatRemaining(remaining) }));
   progressText.textContent = parts.join(' · ');
 }
 
@@ -269,7 +272,7 @@ async function exportCsv(): Promise<void> {
     genericEmailsOnly: options.genericEmailsOnly,
   });
   if (leads.length === 0) {
-    statusElement.textContent = 'Nenhum lead para exportar com essas opções.';
+    statusElement.textContent = t('nothingToExport');
     return;
   }
   const url = URL.createObjectURL(new Blob([leadsToCsv(leads)], { type: 'text/csv;charset=utf-8' }));
@@ -278,13 +281,13 @@ async function exportCsv(): Promise<void> {
   link.download = exportFileName(new Date());
   link.click();
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
-  statusElement.textContent = `${leads.length} leads exportados.`;
+  statusElement.textContent = t('exported', { n: leads.length });
 }
 
 // diálogo nativo no lugar de confirm(): foco devolvido ao botão e Esc fecham sozinhos
 function askBeforeClearing(): Promise<string> {
   $('#confirm-clear-text').textContent =
-    `${totalLeads} leads salvos serão apagados e isso não pode ser desfeito. Exporte antes se quiser guardá-los.`;
+    t('clearText', { n: totalLeads });
   return new Promise((resolve) => {
     confirmDialog.addEventListener('close', () => resolve(confirmDialog.returnValue), { once: true });
     confirmDialog.returnValue = 'cancel';
@@ -321,7 +324,7 @@ async function copyDiagnostic(): Promise<void> {
     log,
   };
   await navigator.clipboard.writeText(JSON.stringify(report, null, 2));
-  statusElement.textContent = 'Diagnóstico copiado.';
+  statusElement.textContent = t('diagnosticCopied');
 }
 
 async function run(message: PopupMessage): Promise<void> {
