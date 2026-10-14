@@ -1,6 +1,6 @@
 # LeadMapper
 
-[![Apresentação do LeadMapper: da busca no Maps ao CSV](docs/media/apresentacao.jpg)](docs/media/apresentacao.mp4)
+[![Apresentação do LeadMapper: da busca no Maps ao CSV](docs/media/apresentacao.jpg)](https://github.com/user-attachments/assets/0ab6ad5b-4bb1-4bc2-bebc-4540be27e9a2)
 
 *Apresentação em vídeo. Clique na imagem para assistir.*
 
@@ -23,7 +23,7 @@ Extensão de Chrome (Manifest V3) que transforma uma busca no Google Maps em uma
 
 ## Instalação
 
-[![Como instalar o LeadMapper, passo a passo](docs/media/instalacao.jpg)](docs/media/instalacao.mp4)
+[![Como instalar o LeadMapper, passo a passo](docs/media/instalacao.jpg)](https://github.com/user-attachments/assets/5a40fa16-6791-4d67-a9e9-961e0525452f)
 
 *Instalação em vídeo. Clique na imagem para assistir.*
 
