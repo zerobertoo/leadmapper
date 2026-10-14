@@ -1,8 +1,8 @@
 # LeadMapper
 
-[![Apresentação do LeadMapper: da busca no Maps ao CSV (vídeo de 30 s)](docs/media/apresentacao.jpg)](docs/media/apresentacao.mp4)
+[![Apresentação do LeadMapper: da busca no Maps ao CSV](docs/media/apresentacao.jpg)](docs/media/apresentacao.mp4)
 
-*Apresentação em vídeo (30 s). Clique na imagem para assistir.*
+*Apresentação em vídeo. Clique na imagem para assistir.*
 
 Extensão de Chrome (Manifest V3) que transforma uma busca no Google Maps em uma lista de leads em CSV: nome, categoria, telefone, WhatsApp, e-mail, site, endereço, nota e redes sociais. Roda inteira no seu navegador, sem servidor, sem conta e sem API paga.
 
@@ -23,9 +23,9 @@ Extensão de Chrome (Manifest V3) que transforma uma busca no Google Maps em uma
 
 ## Instalação
 
-[![Como instalar o LeadMapper, passo a passo (vídeo de 42 s)](docs/media/instalacao.jpg)](docs/media/instalacao.mp4)
+[![Como instalar o LeadMapper, passo a passo](docs/media/instalacao.jpg)](docs/media/instalacao.mp4)
 
-*Instalação em vídeo (42 s). Clique na imagem para assistir.*
+*Instalação em vídeo. Clique na imagem para assistir.*
 
 ### Pelo .zip da release (sem precisar de Node)
 
