@@ -14,7 +14,9 @@
   "minimum_chrome_version": "118",
   "host_permissions": [
     "https://www.google.com/maps/*",
-    "https://www.google.com.br/maps/*",
+    "https://www.google.com.br/maps/*"
+  ],
+  "optional_host_permissions": [
     "https://*/*",
     "http://*/*"
   ],

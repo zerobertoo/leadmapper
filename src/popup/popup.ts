@@ -18,6 +18,8 @@ import {
 
 applyI18n();
 
+// permissão opcional para o service worker visitar os sites das empresas
+const SITE_ORIGINS = ['https://*/*', 'http://*/*'];
 const LGPD_ACK_KEY = 'lgpdAck';
 const RENDER_THROTTLE_MS = 250;
 
@@ -336,11 +338,19 @@ async function run(message: PopupMessage): Promise<void> {
   }
 }
 
-buttons.start.addEventListener('click', () => {
+buttons.start.addEventListener('click', async () => {
   // falha de comunicação: só repete a leitura do estado
   if (buttons.start.dataset.retry === 'status') return void run({ type: 'GET_STATUS' });
-  const { limit, speed, enrichSites: enrich } = currentOptions();
+  const { limit, speed, enrichSites: wantsEnrich } = currentOptions();
   limitInput.value = String(limit);
+  // visitar os sites exige a permissão opcional; sem ela, coleta só o Maps
+  let enrich = wantsEnrich;
+  if (enrich) {
+    // pedido no início do clique: precisa do gesto do usuário
+    enrich = await chrome.permissions.request({ origins: SITE_ORIGINS }).catch(() => false);
+    if (!enrich) enrichSites.checked = false;
+    saveOptions();
+  }
   void run({ type: 'START', settings: { limit, speed, enrichSites: enrich } });
 });
 for (const field of [limitInput, speedSelect, enrichSites, discardNoContact, genericEmailsOnly, exportScope]) {
