@@ -62,6 +62,3 @@ vite.config.ts.timestamp-*
 .vite/
 *.csv
 *.zip
-.agents/
-.claude/
-.impeccable/
