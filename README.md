@@ -119,9 +119,7 @@ Com ao menos um lead salvo, o popup mostra **Abrir lista de leads**. O painel la
 | `scripting` | Injetar o script de coleta na aba do Maps que já estava aberta antes da extensão ser instalada ou recarregada. |
 | `alarms` | Acordar o service worker a cada minuto **só enquanto há sites a visitar**, para retomar a fila se ele tiver sido encerrado com o popup fechado. |
 | `https://www.google.com/maps/*` e `https://www.google.com.br/maps/*` | Rodar o script de coleta nas páginas do Maps. |
-| `https://*/*` e `http://*/*` | Permitir que o service worker faça `fetch` aos sites das empresas sem bloqueio de CORS. Sem isso não há e-mail nem WhatsApp. Sites antigos ainda usam `http://`. |
-
-> `https://*/*` é uma permissão ampla. Antes de uma eventual publicação na Chrome Web Store, vale pedi-la como permissão opcional no clique de "Iniciar coleta" (ver `docs/melhorias.md`, S3).
+| `https://*/*` e `http://*/*` (opcionais) | Pedidas só quando você ativa "Buscar e-mail e WhatsApp nos sites": permitem que o service worker faça `fetch` aos sites das empresas sem bloqueio de CORS. Sem elas a coleta roda só com os dados do Maps. Sites antigos ainda usam `http://`. |
 
 ## Privacidade
 

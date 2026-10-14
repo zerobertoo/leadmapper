@@ -28,7 +28,7 @@ Profissional de vendas, freelancer ou dono de pequena agência que prospecta emp
 
 ## Anti-objetivos
 
-Não é CRM, não envia mensagens, não pontua leads com IA, não contorna captcha nem proxy, não sincroniza na nuvem. Ver `docs/prd-extensao-leads.md` e `docs/melhorias.md` (seção v2+).
+Não é CRM, não envia mensagens, não pontua leads com IA, não contorna captcha nem proxy, não sincroniza na nuvem. Ver `docs/prd-extensao-leads.md`.
 
 ## Positioning
 
@@ -40,7 +40,7 @@ Uso diário em Chrome (118+), na aba do Google Maps, com popup para coletar e ex
 
 ## Evidence on Hand
 
-Apenas o código, `README.md`, `docs/prd-extensao-leads.md`, `docs/melhorias.md`, `docs/revisao.md` e a suíte de testes em `tests/`. Não há clientes, depoimentos, métricas de uso nem publicação na Chrome Web Store; não inventar nenhum deles.
+Apenas o código, `README.md`, `docs/prd-extensao-leads.md` e a suíte de testes em `tests/`. Não há clientes, depoimentos, métricas de uso nem publicação na Chrome Web Store; não inventar nenhum deles.
 
 ## Brand Commitments
 
