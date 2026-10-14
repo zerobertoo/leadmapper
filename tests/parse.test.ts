@@ -36,6 +36,15 @@ describe('listCards', () => {
     expect(cards.map((card) => card.name)).toEqual(['Drogaria Pacheco', 'Drogaria Pacheco', 'Clínica Sorriso']);
   });
 
+  it('junta cartões com o mesmo id de lugar mesmo com links diferentes (limite conta lugares, não cartões)', () => {
+    document.body.innerHTML = `<div role="feed">
+      <a aria-label="Vet A" href="https://www.google.com/maps/place/Vet+A/data=!4m7!3m6!1s0x94cc1:0xaaa!8m2?entry=ttu"></a>
+      <a aria-label="Vet B" href="https://www.google.com/maps/place/Vet+B/data=!4m7!3m6!1s0x94cc2:0xbbb!8m2"></a>
+      <a aria-label="Vet A" href="https://www.google.com/maps/place/Vet+A/data=!4m7!3m6!1s0x94cc1:0xaaa!8m2?authuser=0"></a>
+    </div>`;
+    expect(listCards().map((card) => card.name)).toEqual(['Vet A', 'Vet B']);
+  });
+
   it('devolve lista vazia quando o feed some', () => {
     document.body.innerHTML = '<div>nada</div>';
     expect(listCards()).toEqual([]);

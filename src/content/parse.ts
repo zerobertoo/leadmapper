@@ -46,11 +46,14 @@ export function parseRating(text: string): { rating: number | null; reviews: num
 export function listCards(root: ParentNode = document): ResultCard[] {
   const feed = queryFirst(root, SELECTORS.resultsFeed);
   if (!feed) return [];
-  const seenUrls = new Set<string>();
+  // por lugar, não por href: o Maps repete a mesma empresa com parâmetros diferentes (anúncio, rastreio)
+  // e o limite da coleta contaria cartões a mais do que empresas distintas
+  const seenPlaces = new Set<string>();
   const cards: ResultCard[] = [];
   for (const element of feed.querySelectorAll<HTMLAnchorElement>(SELECTORS.resultCard[0])) {
-    if (seenUrls.has(element.href)) continue;
-    seenUrls.add(element.href);
+    const key = placeKey(element.href);
+    if (seenPlaces.has(key)) continue;
+    seenPlaces.add(key);
     cards.push({ name: normalizeText(element.getAttribute('aria-label')), url: element.href, element });
   }
   return cards;
